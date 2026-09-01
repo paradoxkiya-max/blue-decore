@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { serialize } from "cookie";
+import { stringifySetCookie } from "cookie";
 import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const";
 import { getSessionCookieOptions } from "../../server/_core/cookies";
 import { getHardcodedAdminEmail, isValidAdminCredentials } from "../../server/adminCredentials";
@@ -67,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.setHeader(
       "Set-Cookie",
-      serialize(COOKIE_NAME, sessionToken, {
+      stringifySetCookie(COOKIE_NAME, sessionToken, {
         ...getSessionCookieOptions(req as never),
         maxAge: ONE_YEAR_MS / 1000,
       }),

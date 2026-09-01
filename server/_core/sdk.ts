@@ -2,7 +2,7 @@ import { AXIOS_TIMEOUT_MS, COOKIE_NAME, ONE_YEAR_MS, decodeOAuthState } from "@s
 import { ForbiddenError } from "@shared/_core/errors";
 import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
-import type { Request } from "express";
+import type { IncomingHttpHeaders } from "node:http";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
@@ -18,6 +18,10 @@ import type {
 // Utility function
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.length > 0;
+
+type AuthRequest = {
+  headers: IncomingHttpHeaders;
+};
 
 export type SessionPayload = {
   openId: string;
@@ -256,7 +260,7 @@ class SDKServer {
     } as GetUserInfoWithJwtResponse;
   }
 
-  async authenticateRequest(req: Request): Promise<AuthenticatedUser> {
+  async authenticateRequest(req: AuthRequest): Promise<AuthenticatedUser> {
     // 1. Prefer the session cookie (regular OAuth login).
     const cookies = this.parseCookies(req.headers.cookie);
     let sessionToken = cookies.get(COOKIE_NAME);
