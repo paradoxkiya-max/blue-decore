@@ -27,7 +27,7 @@ export default async function handler(req: Request, res: Response) {
     const input = req.method === "POST" ? await readBody(req) : undefined;
     if (req.method === "POST" && input === null) return json(res, 400, { error: "Request body must be valid JSON" });
 
-    const context = await createContext({ req: req as never, res: res as never });
+    const context = await createContext({ req: req as any, res: res as any, info: { req, res } as any });
     let procedure: any = appRouter.createCaller(context);
     for (const segment of path) procedure = procedure[segment];
     if (typeof procedure !== "function") return json(res, 404, { error: "API operation not found" });
