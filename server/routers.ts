@@ -4,6 +4,7 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { events, inquiries, journalEntries, mediaAssets, programs, services, siteSettings } from "../drizzle/schema";
+import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { dashboardSummary, ensureContentSeeded, publicContent, requireDb } from "./db";
@@ -44,7 +45,7 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => { (ctx.res as unknown as { setHeader: (name: string, value: string) => void }).setHeader("Set-Cookie", `${COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; SameSite=None; Secure`); return { success: true } as const; }),
+    logout: publicProcedure.mutation(({ ctx }) => { const response = ctx.res as unknown as { clearCookie?: (name: string, options: Record<string, unknown>) => void; setHeader?: (name: string, value: string) => void }; const options = { ...getSessionCookieOptions(ctx.req), maxAge: -1 }; if (response.clearCookie) response.clearCookie(COOKIE_NAME, options); else response.setHeader?.("Set-Cookie", `${COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; SameSite=None; Secure`); return { success: true } as const; }),
   }),
   public: router({
     homepage: publicProcedure.query(() => publicContent()),
