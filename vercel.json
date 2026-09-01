@@ -4,6 +4,9 @@
   "outputDirectory": "dist/public",
   "framework": "vite",
   "functions": {
+    "api/rest/[...path].ts": {
+      "maxDuration": 30
+    },
     "api/firebase/session.ts": {
       "maxDuration": 30
     }
