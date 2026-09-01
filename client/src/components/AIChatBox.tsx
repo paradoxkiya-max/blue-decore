@@ -23,7 +23,7 @@ export type AIChatBoxProps = {
 
   /**
    * Callback when user sends a message.
-   * Typically you'll call a tRPC mutation here to invoke the LLM.
+   * Typically you'll call a simple API request here to invoke the LLM.
    */
   onSendMessage: (content: string) => void;
 
@@ -76,9 +76,9 @@ export type AIChatBoxProps = {
  *     { role: "system", content: "You are a helpful assistant." }
  *   ]);
  *
- *   const chatMutation = trpc.ai.chat.useMutation({
+ *   const chatMutation = api.ai.chat({
  *     onSuccess: (response) => {
- *       // Assuming your tRPC endpoint returns the AI response as a string
+ *       // Assuming your API endpoint returns the AI response as a string
  *       setMessages(prev => [...prev, {
  *         role: "assistant",
  *         content: response

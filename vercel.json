@@ -4,15 +4,11 @@
   "outputDirectory": "dist/public",
   "framework": "vite",
   "functions": {
-    "api/trpc/[...path].ts": {
-      "maxDuration": 30
-    },
     "api/firebase/session.ts": {
       "maxDuration": 30
     }
   },
   "rewrites": [
-    { "source": "/api/trpc/:path*", "destination": "/api/trpc/:path*" },
     { "source": "/api/firebase/session", "destination": "/api/firebase/session" },
     { "source": "/((?!api(?:/|$)).*)", "destination": "/index.html" }
   ]

@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
-import { trpc } from "@/lib/trpc";
+import { api } from "@/lib/api";
 
 const asset = { mark: "/manus-storage/kasha-signal-mark_87b5eda2.png" };
 
@@ -43,8 +43,8 @@ export default function Home() {
   const { theme, toggleTheme } = useTheme();
   const [language, setLanguage] = useState<"en" | "am">(() => (localStorage.getItem("kasha-language") as "en" | "am") || "en");
   const copy = labels[language];
-  const homepage = trpc.public.homepage.useQuery(undefined, { refetchOnWindowFocus: false, retry: 1 });
-  const submitInquiry = trpc.public.submitInquiry.useMutation();
+  const homepage = api.public.homepage.useQuery(undefined, { refetchOnWindowFocus: false, retry: 1 });
+  const submitInquiry = api.public.submitInquiry.useMutation();
 
   useEffect(() => {
     const onScroll = () => setHasScrolled(window.scrollY > 28);
@@ -114,7 +114,7 @@ export default function Home() {
     contactBody: "Share the occasion, the date, and the feeling you want your guests to leave with. We’ll come back with a thoughtful first idea.",
     footerBuiltLine: "Styled with care / Made for your people",
   };
-  const tickerItems = settings.tickerItems.split("|").map((item) => item.trim()).filter(Boolean);
+  const tickerItems = settings.tickerItems.split("|").map((item: string) => item.trim()).filter(Boolean);
   const tickerSequence = [...tickerItems, ...tickerItems.slice(0, 2)];
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -164,7 +164,7 @@ export default function Home() {
 
         <section className="event-section section-wrap section-space" aria-labelledby="event-heading"><div className="event-image"><img src={settings.eventImageUrl} alt={settings.eventImageLabel} /><span className="image-label image-label-dark">{settings.eventImageLabel}</span></div><div className="event-copy"><p className="eyebrow">{settings.eventEyebrow}</p><h2 id="event-heading">{settings.eventTitle}<br /><em>{settings.eventAccent}</em></h2><p className="body-large">{settings.eventBody}</p><button className="button button-outline" type="button" onClick={() => scrollToId("contact")}>{settings.eventCtaLabel} <ArrowUpRight size={17} /></button></div></section>
 
-        <section className="journal-section section-space" id="journal" aria-labelledby="journal-heading"><div className="section-wrap"><div className="section-rail"><span>05</span><span>{settings.journalRailLabel}</span></div><div className="section-heading-row"><div><p className="eyebrow">{settings.journalEyebrow}</p><h2 id="journal-heading">{settings.journalTitle}<br /><em>{settings.journalAccent}</em></h2></div><button className="text-link" type="button" onClick={() => onPlaceholder(settings.journalRailLabel)}>{copy.viewNotes} <ArrowRight size={16} /></button></div><div className="journal-list">{journalEntries.map((note) => <button type="button" className="journal-row" key={note.id} onClick={() => onPlaceholder(note.title)}><span className="journal-date">{note.dateLabel}</span><strong>{note.title}</strong><span className="journal-kind">{note.category}</span><ArrowUpRight size={18} /></button>)}</div></div></section>
+        <section className="journal-section section-space" id="journal" aria-labelledby="journal-heading"><div className="section-wrap"><div className="section-rail"><span>05</span><span>{settings.journalRailLabel}</span></div><div className="section-heading-row"><div><p className="eyebrow">{settings.journalEyebrow}</p><h2 id="journal-heading">{settings.journalTitle}<br /><em>{settings.journalAccent}</em></h2></div><button className="text-link" type="button" onClick={() => onPlaceholder(settings.journalRailLabel)}>{copy.viewNotes} <ArrowRight size={16} /></button></div><div className="journal-list">{journalEntries.map((note: any) => <button type="button" className="journal-row" key={note.id} onClick={() => onPlaceholder(note.title)}><span className="journal-date">{note.dateLabel}</span><strong>{note.title}</strong><span className="journal-kind">{note.category}</span><ArrowUpRight size={18} /></button>)}</div></div></section>
 
         <section className="contact-section section-wrap section-space" id="contact" aria-labelledby="contact-heading"><div className="section-rail section-rail-dark"><span>06</span><span>{settings.contactRailLabel}</span></div><div className="contact-grid"><div className="contact-copy"><p className="eyebrow eyebrow-light">{settings.contactEyebrow}</p><h2 id="contact-heading">{settings.contactTitle}<br /><em>{settings.contactAccent}</em></h2><p>{settings.contactBody}</p><div className="contact-details"><span><Mail size={15} /> {settings.contactEmail}</span><span><MapPin size={15} /> {settings.contactLocation}</span></div></div><form className="contact-form" onSubmit={handleSubmit}><label>{copy.name}<input name="name" required placeholder={copy.placeholderName} /></label><label>{copy.email}<input name="email" type="email" required placeholder={copy.placeholderEmail} /></label><label>{copy.brief}<textarea name="brief" required placeholder={copy.placeholderBrief} rows={3} /></label><button className="button button-signal button-submit" type="submit" disabled={submitInquiry.isPending}>{submitInquiry.isPending ? "Sending…" : copy.send} <Send size={16} /></button></form></div></section>
       </main>
