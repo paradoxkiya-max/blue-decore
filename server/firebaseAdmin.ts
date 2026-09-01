@@ -2,6 +2,8 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth, type DecodedIdToken, type UserRecord } from "firebase-admin/auth";
 
+const DEFAULT_FIREBASE_ADMIN_EMAIL = "tadi@gmail.com";
+
 type FirebaseServiceAccount = {
   project_id: string;
   client_email: string;
@@ -46,6 +48,6 @@ export async function ensureFirebaseAdminUser(email: string, password: string): 
 }
 
 export function isFirebaseAdminEmail(email: string | undefined | null) {
-  const configured = process.env.FIREBASE_ADMIN_EMAIL?.trim().toLowerCase();
+  const configured = (process.env.FIREBASE_ADMIN_EMAIL ?? DEFAULT_FIREBASE_ADMIN_EMAIL).trim().toLowerCase();
   return Boolean(configured && email && configured === email.trim().toLowerCase());
 }
