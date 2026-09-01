@@ -2,7 +2,6 @@ import { AXIOS_TIMEOUT_MS, COOKIE_NAME, ONE_YEAR_MS, decodeOAuthState } from "@s
 import { ForbiddenError } from "@shared/_core/errors";
 import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
-import type { IncomingHttpHeaders } from "node:http";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
@@ -19,9 +18,16 @@ import type {
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.length > 0;
 
-type AuthRequest = {
-  headers: IncomingHttpHeaders;
+type AuthHeaders = {
+  cookie?: unknown;
+  authorization?: unknown;
 };
+
+function readAuthHeaders(request: unknown): AuthHeaders {
+  if (typeof request !== "object" || request === null || !("headers" in request)) return {};
+  const headers = (request as { headers?: unknown }).headers;
+  return typeof headers === "object" && headers !== null ? headers as AuthHeaders : {};
+}
 
 export type SessionPayload = {
   openId: string;
@@ -260,18 +266,19 @@ class SDKServer {
     } as GetUserInfoWithJwtResponse;
   }
 
-  async authenticateRequest(req: AuthRequest): Promise<AuthenticatedUser> {
+  async authenticateRequest(req: unknown): Promise<AuthenticatedUser> {
     // 1. Prefer the session cookie (regular OAuth login).
-    const cookies = this.parseCookies(req.headers.cookie);
+    const headers = readAuthHeaders(req);
+    const cookies = this.parseCookies(typeof headers.cookie === "string" ? headers.cookie : undefined);
     let sessionToken = cookies.get(COOKIE_NAME);
 
     // 2. Fallback to the Authorization header (Preview auto-login via
     //    sessionStorage), used when the browser blocks iframe cookies such as
     //    Safari ITP, private browsing, or iOS/Android WebView.
     if (!sessionToken) {
-      const authHeader = req.headers.authorization;
-      if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
-        sessionToken = authHeader.slice(7);
+      const authorization = typeof headers.authorization === "string" ? headers.authorization : undefined;
+      if (typeof authorization === "string" && authorization.startsWith("Bearer ")) {
+        sessionToken = authorization.slice(7);
       }
     }
 
