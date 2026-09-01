@@ -44,7 +44,7 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => { ctx.res.setHeader("Set-Cookie", `${COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; SameSite=None; Secure`); return { success: true } as const; }),
+    logout: publicProcedure.mutation(({ ctx }) => { (ctx.res as unknown as { setHeader: (name: string, value: string) => void }).setHeader("Set-Cookie", `${COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; SameSite=None; Secure`); return { success: true } as const; }),
   }),
   public: router({
     homepage: publicProcedure.query(() => publicContent()),
