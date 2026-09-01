@@ -2,8 +2,6 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { serialize } from "cookie";
 import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const";
 import { getSessionCookieOptions } from "../../server/_core/cookies";
-import { sdk } from "../../server/_core/sdk";
-import * as db from "../../server/db";
 import { getHardcodedAdminEmail, isValidAdminCredentials } from "../../server/adminCredentials";
 
 type VercelRequest = IncomingMessage & {
@@ -48,6 +46,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const [{ sdk }, db] = await Promise.all([
+      import("../../server/_core/sdk"),
+      import("../../server/db"),
+    ]);
     const adminEmail = getHardcodedAdminEmail();
     const openId = `hardcoded_admin_${adminEmail}`;
     await db.upsertUser({
