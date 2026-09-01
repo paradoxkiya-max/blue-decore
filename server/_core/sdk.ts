@@ -5,7 +5,7 @@ import { parse as parseCookieHeader } from "cookie";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
-import { verifyFirebaseIdToken } from "../firebaseAdmin";
+import { isFirebaseAdminEmail, verifyFirebaseIdToken } from "../firebaseAdmin";
 import { ENV } from "./env";
 import type {
   ExchangeTokenRequest,
@@ -290,7 +290,7 @@ class SDKServer {
         const firebaseToken = await verifyFirebaseIdToken(sessionToken);
         const openId = `firebase_${firebaseToken.uid}`;
         const email = firebaseToken.email ?? null;
-        const role = email?.toLowerCase() === process.env.FIREBASE_ADMIN_EMAIL?.toLowerCase() ? "admin" : "user";
+        const role = isFirebaseAdminEmail(email) ? "admin" : "user";
         await db.upsertUser({
           openId,
           name: firebaseToken.name ?? email ?? "Firebase user",

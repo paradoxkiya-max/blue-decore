@@ -10,8 +10,6 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
-import { firebaseAuth } from "@/lib/firebase";
-import { signOut as signOutFirebase } from "firebase/auth";
 import { trpc } from "@/lib/trpc";
 
 type SectionKey = "dashboard" | "settings" | "programs" | "services" | "events" | "journal" | "inquiries" | "media";
@@ -48,7 +46,7 @@ export default function AdminControlRoom({ forcedSection }: { forcedSection?: Se
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => { if (!loading && user?.role !== "admin") setLocation("/admin"); }, [loading, user?.role, setLocation]);
-  const signOut = async () => { await Promise.allSettled([logout(), signOutFirebase(firebaseAuth)]); setLocation("/admin"); };
+  const signOut = async () => { await logout(); setLocation("/admin"); };
   if (loading || user?.role !== "admin") return <ControlRoomLoading />;
 
   const navigate = (key: SectionKey) => { setMobileOpen(false); setLocation(`/admin/${key}`); };

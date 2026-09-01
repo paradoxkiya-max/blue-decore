@@ -3,6 +3,8 @@ import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
+export const FIREBASE_ADMIN_EMAIL = "tadi@gmail.com";
+
 const firebaseConfig = {
   apiKey: "AIzaSyBDfKknrSnsfkkoUYWA0oiN8SvTFaiz99s",
   authDomain: "blue-decore.firebaseapp.com",
