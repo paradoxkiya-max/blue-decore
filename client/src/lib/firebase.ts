@@ -9,8 +9,8 @@ const firebaseConfig = {
   projectId: "blue-decore",
   storageBucket: "blue-decore.firebasestorage.app",
   messagingSenderId: "49207178042",
-  appId: "1:49207178042:web:bf5b515910a45ba402d603",
-  measurementId: "G-LGRH3ZL381",
+  appId: "1:49207178042:web:75574a3e86680dc502d603",
+  measurementId: "G-8K69HDP3E9",
 };
 
 const firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);

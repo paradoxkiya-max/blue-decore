@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 describe("Firebase administrator login", () => {
-  it("authenticates the configured administrator through Firebase Identity Toolkit", async () => {
+  it.skipIf(!process.env.FIREBASE_ADMIN_EMAIL || !process.env.FIREBASE_ADMIN_PASSWORD || !process.env.VITE_FIREBASE_API_KEY)("authenticates the configured administrator through Firebase Identity Toolkit", async () => {
     const email = process.env.FIREBASE_ADMIN_EMAIL;
     const password = process.env.FIREBASE_ADMIN_PASSWORD;
     const apiKey = process.env.VITE_FIREBASE_API_KEY;

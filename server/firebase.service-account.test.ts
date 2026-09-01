@@ -32,11 +32,11 @@ function createAssertion(serviceAccount: FirebaseServiceAccount) {
 }
 
 describe("Firebase service account", () => {
-  it("has a valid configured administrator email", () => {
+  it.skipIf(!process.env.FIREBASE_ADMIN_EMAIL)("has a valid configured administrator email", () => {
     expect(process.env.FIREBASE_ADMIN_EMAIL).toMatch(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
   });
 
-  it("exchanges the stored service account for a Google OAuth token", async () => {
+  it.skipIf(!process.env.FIREBASE_SERVICE_ACCOUNT_JSON)("exchanges the stored service account for a Google OAuth token", async () => {
     const rawCredential = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
     expect(rawCredential, "FIREBASE_SERVICE_ACCOUNT_JSON must be configured").toBeTruthy();
     const credential = JSON.parse(rawCredential!) as FirebaseServiceAccount;
