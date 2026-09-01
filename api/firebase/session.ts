@@ -1,7 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { stringifySetCookie } from "cookie";
 import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const";
-import { getSessionCookieOptions } from "../../server/_core/cookies";
 import { getHardcodedAdminEmail, isValidAdminCredentials } from "../../server/adminCredentials";
 
 type VercelRequest = IncomingMessage & {
@@ -13,6 +11,10 @@ type VercelResponse = ServerResponse & {
   status: (code: number) => VercelResponse;
   json: (body: unknown) => VercelResponse;
 };
+
+function serializeSessionCookie(value: string, maxAge: number) {
+  return `${COOKIE_NAME}=${encodeURIComponent(value)}; Max-Age=${maxAge}; Path=/; HttpOnly; SameSite=None; Secure`;
+}
 
 function readCredentials(body: unknown) {
   if (typeof body === "string") {
@@ -67,10 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.setHeader(
       "Set-Cookie",
-      stringifySetCookie(COOKIE_NAME, sessionToken, {
-        ...getSessionCookieOptions(req as never),
-        maxAge: ONE_YEAR_MS / 1000,
-      }),
+      serializeSessionCookie(sessionToken, ONE_YEAR_MS / 1000),
     );
     return res.status(200).json({ success: true, role: "admin" });
   } catch (error) {
