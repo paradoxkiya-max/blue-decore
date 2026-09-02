@@ -59,7 +59,8 @@ export default function Home() {
   if (homepage.isError) return <main className="kasha-page"><section className="hero"><div className="hero-scrim" /><div className="hero-content section-wrap"><div className="hero-copy"><p className="eyebrow eyebrow-light">Signal interrupted</p><h1>We&apos;ll be back<br /><em>shortly.</em></h1><p className="hero-intro">The Blue Decor studio could not load the current broadcast. Please refresh this page.</p></div></div></section></main>;
   if (homepage.isLoading || !content?.settings) return <LoadingSignal />;
 
-  const { settings, programs, services, journalEntries } = content;
+  const { settings: rawSettings, programs = [], services = [], journalEntries = [] } = content;
+  const settings = { ...rawSettings, tickerItems: rawSettings.tickerItems ?? "" };
   const tickerItems = settings.tickerItems.split("|").map((item: string) => item.trim()).filter(Boolean);
   const tickerSequence = [...tickerItems, ...tickerItems.slice(0, 2)];
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
