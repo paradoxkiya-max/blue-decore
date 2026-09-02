@@ -4,8 +4,13 @@ import { firebaseAuth } from "@/lib/firebase";
 type Options = { retry?: number; refetchOnWindowFocus?: boolean; onSuccess?: (value: any) => void; onError?: (error: any) => void };
 type QueryResult<T> = { data: T | undefined; isLoading: boolean; isError: boolean; error: Error | null; refetch: () => Promise<void> };
 
+async function getFirebaseToken() {
+  await firebaseAuth.authStateReady();
+  return firebaseAuth.currentUser?.getIdToken();
+}
+
 async function request(path: string, method: "GET" | "POST", input?: unknown) {
-  const token = await firebaseAuth.currentUser?.getIdToken();
+  const token = await getFirebaseToken();
   const response = await fetch(`/api/rest/${path}`, {
     method,
     headers: { accept: "application/json", ...(method === "POST" ? { "content-type": "application/json" } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
