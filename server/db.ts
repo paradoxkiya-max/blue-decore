@@ -14,6 +14,7 @@ import {
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { getFirebaseFirestore } from "./firebaseAdmin";
+import type { DocumentSnapshot } from "firebase-admin/firestore";
 
 let database: ReturnType<typeof drizzle> | null = null;
 let seedPromise: Promise<void> | null = null;
@@ -205,7 +206,7 @@ function firestoreCollection(name: string) {
   return getFirebaseFirestore().collection(name);
 }
 
-function firestoreRow<T extends Record<string, any>>(snapshot: FirebaseFirestore.DocumentSnapshot, fallbackId?: number): T {
+function firestoreRow<T extends Record<string, any>>(snapshot: DocumentSnapshot, fallbackId?: number): T {
   const value = snapshot.data() ?? {};
   return { id: Number(value.id ?? fallbackId ?? snapshot.id), ...value } as unknown as T;
 }
@@ -238,7 +239,7 @@ export async function ensureFirestoreContentSeeded() {
 export async function firestoreList(collection: string) {
   await ensureFirestoreContentSeeded();
   const snapshot = await firestoreCollection(collection).get();
-  return snapshot.docs.map((doc) => firestoreRow(doc)).sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0));
+  return snapshot.docs.map((doc: DocumentSnapshot) => firestoreRow<Record<string, any>>(doc)).sort((a: Record<string, any>, b: Record<string, any>) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0));
 }
 
 export async function firestoreGetSettings() {
@@ -253,7 +254,7 @@ export async function firestoreSaveSettings(values: Record<string, unknown>) {
 
 export async function firestoreCreate(collection: string, values: Record<string, unknown>) {
   const ref = firestoreCollection(collection).doc();
-  const id = Math.abs(ref.id.split("").reduce((sum, char) => sum * 31 + char.charCodeAt(0), 7));
+  const id = Math.abs(ref.id.split("").reduce((sum: number, char: string) => sum * 31 + char.charCodeAt(0), 7));
   await ref.set({ id, ...values, createdAt: new Date(), updatedAt: new Date() });
   return { id };
 }
@@ -271,12 +272,12 @@ export async function firestoreDelete(collection: string, id: number) {
 
 export async function firestorePublicContent() {
   const settings = await firestoreGetSettings();
-  const published = async (collection: string) => (await firestoreList(collection)).filter((row) => row.isPublished !== false);
+  const published = async (collection: string) => (await firestoreList(collection)).filter((row: Record<string, any>) => row.isPublished !== false);
   return { settings, programs: await published(firestoreCollections.programs), services: await published(firestoreCollections.services), events: await published(firestoreCollections.events), journalEntries: await published(firestoreCollections.journal) };
 }
 
 export async function firestoreDashboardSummary() {
-  const stats = async (collection: string) => { const rows = await firestoreList(collection); return { total: rows.length, published: rows.filter((row) => row.isPublished !== false).length, drafts: rows.filter((row) => row.isPublished === false).length }; };
+  const stats = async (collection: string) => { const rows = await firestoreList(collection); return { total: rows.length, published: rows.filter((row: Record<string, any>) => row.isPublished !== false).length, drafts: rows.filter((row: Record<string, any>) => row.isPublished === false).length }; };
   const inquiryRows = await firestoreList(firestoreCollections.inquiries);
-  return { programs: await stats(firestoreCollections.programs), services: await stats(firestoreCollections.services), events: await stats(firestoreCollections.events), journal: await stats(firestoreCollections.journal), recentInquiries: inquiryRows.slice(0, 5), newInquiries: inquiryRows.filter((row) => row.status === "new").length };
+  return { programs: await stats(firestoreCollections.programs), services: await stats(firestoreCollections.services), events: await stats(firestoreCollections.events), journal: await stats(firestoreCollections.journal), recentInquiries: inquiryRows.slice(0, 5), newInquiries: inquiryRows.filter((row: Record<string, any>) => row.status === "new").length };
 }
