@@ -14,17 +14,32 @@ type ClientUser = {
   role: "admin" | "user";
 };
 
+const SESSION_STORAGE_KEY = "blue_decor_auth_user";
+
+function getCachedUser(): ClientUser | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function useAuth(options?: UseAuthOptions) {
   const { redirectOnUnauthenticated = false, redirectPath } = options ?? {};
-  const [user, setUser] = useState<ClientUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<ClientUser | null>(getCachedUser);
+  const [loading, setLoading] = useState(!getCachedUser());
 
   useEffect(() => onAuthStateChanged(firebaseAuth, (firebaseUser) => {
     if (!firebaseUser) {
       setUser(null);
+      try { localStorage.removeItem(SESSION_STORAGE_KEY); } catch {}
     } else {
       const email = firebaseUser.email?.trim().toLowerCase() ?? null;
-      setUser({ uid: firebaseUser.uid, email: firebaseUser.email, name: firebaseUser.displayName ?? email ?? "Firebase user", role: email === FIREBASE_ADMIN_EMAIL ? "admin" : "user" });
+      const clientUser: ClientUser = { uid: firebaseUser.uid, email: firebaseUser.email, name: firebaseUser.displayName ?? email ?? "Firebase user", role: email === FIREBASE_ADMIN_EMAIL ? "admin" : "user" };
+      setUser(clientUser);
+      try { localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(clientUser)); } catch {}
     }
     setLoading(false);
   }), []);
@@ -32,6 +47,7 @@ export function useAuth(options?: UseAuthOptions) {
   const logout = useCallback(async () => {
     await signOut(firebaseAuth);
     setUser(null);
+    try { localStorage.removeItem(SESSION_STORAGE_KEY); } catch {}
   }, []);
 
   useEffect(() => {

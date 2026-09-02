@@ -43,14 +43,28 @@ export async function verifyGoogleDriveImagePublic(driveImage: GoogleDriveImage)
 }
 
 export async function normalizeImageSource(value: string): Promise<string> {
-  const legacySource = value.startsWith("/manus-storage/") || value.startsWith("https://manus-storage/");
-  if (legacySource) return value;
-  const driveImage = parseGoogleDriveImageLink(value);
-  if (driveImage) return (await verifyGoogleDriveImagePublic(driveImage)).url;
-  throw new TRPCError({
-    code: "BAD_REQUEST",
-    message: "Use a Google Drive sharing link for this image. Set General access to Anyone with the link before saving.",
-  });
+  if (!value || typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  
+  // Data URLs from direct file upload
+  if (trimmed.startsWith("data:image/")) return trimmed;
+
+  // Local static asset paths
+  if (trimmed.startsWith("/")) return trimmed;
+
+  // Google Drive sharing links
+  const driveImage = parseGoogleDriveImageLink(trimmed);
+  if (driveImage) {
+    try {
+      return (await verifyGoogleDriveImagePublic(driveImage)).url;
+    } catch {
+      return driveImage.url;
+    }
+  }
+
+  // Standard web URLs (http / https) or any other image source string
+  return trimmed;
 }
 
 export async function requireGoogleDriveImage(value: string): Promise<GoogleDriveImage> {

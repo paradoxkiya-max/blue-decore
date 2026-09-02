@@ -42,6 +42,10 @@ export function getFirebaseFirestore() {
   return getFirestore(getFirebaseAdminApp());
 }
 
+export function getFirestoreDb() {
+  return getFirebaseFirestore();
+}
+
 export function getFirebaseStorageBucket() {
   return getStorage(getFirebaseAdminApp()).bucket();
 }

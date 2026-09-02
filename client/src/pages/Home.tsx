@@ -48,6 +48,19 @@ export default function Home() {
   const homepage = api.public.homepage.useQuery(undefined, { refetchOnWindowFocus: false, retry: 1 });
   const submitInquiry = api.public.submitInquiry.useMutation();
 
+  const [activeModalItem, setActiveModalItem] = useState<{
+    type: string;
+    title: string;
+    subtitle?: string;
+    description: string;
+    imageUrl?: string;
+    tag?: string;
+    category?: string;
+    dateLabel?: string;
+    featureTitle?: string;
+    featureSubtitle?: string;
+  } | null>(null);
+
   useEffect(() => {
     const onScroll = () => setHasScrolled(window.scrollY > 28);
     onScroll(); window.addEventListener("scroll", onScroll, { passive: true });
@@ -58,10 +71,9 @@ export default function Home() {
   const content = homepage.data;
   const featuredProgram = content?.programs?.[0] ?? celebrationPackages[0];
 
-  if (homepage.isError) return <main className="kasha-page"><section className="hero"><div className="hero-scrim" /><div className="hero-content section-wrap"><div className="hero-copy"><p className="eyebrow eyebrow-light">Signal interrupted</p><h1>We&apos;ll be back<br /><em>shortly.</em></h1><p className="hero-intro">The Blue Decor studio could not load the current broadcast. Please refresh this page.</p></div></div></section></main>;
-  if (homepage.isLoading || !content?.settings) return <LoadingSignal />;
+  if (homepage.isLoading && !homepage.isError) return <LoadingSignal />;
 
-  const { settings: rawSettings, programs: apiPrograms = [], services: apiServices = [], journalEntries: apiJournalEntries = [] } = content;
+  const { settings: rawSettings, programs: apiPrograms = [], services: apiServices = [], journalEntries: apiJournalEntries = [] } = content ?? {};
   const settings = { ...fallbackSettings, ...(rawSettings ?? {}), tickerItems: rawSettings?.tickerItems ?? fallbackSettings.tickerItems };
   const programs = apiPrograms.length ? apiPrograms : celebrationPackages;
   const services = apiServices.length ? apiServices : decorServices;
@@ -78,7 +90,16 @@ export default function Home() {
     });
   };
   const closeMenu = () => setMenuOpen(false);
-  const onPlaceholder = (label: string) => toast(`${label} is being prepared for the next broadcast.`, { description: "We’re shaping a calm, considered space for you." });
+
+  const handlePlanClick = (itemTitle: string) => {
+    setActiveModalItem(null);
+    scrollToId("contact");
+    const briefInput = document.querySelector<HTMLTextAreaElement>("textarea[name='brief']");
+    if (briefInput) {
+      briefInput.value = `I would like to inquire about: ${itemTitle}. `;
+      briefInput.focus();
+    }
+  };
 
   return (
     <div className="kasha-page">
@@ -108,18 +129,62 @@ export default function Home() {
 
         <div className="ticker" aria-label={`${settings.siteName} focus areas`}><div className="ticker-inner">{tickerSequence.map((item, index) => <span key={`${item}-${index}`} className="ticker-item">{item}{index < tickerSequence.length - 1 && <i aria-hidden="true" />}</span>)}</div></div>
 
-        <section className="about-section section-wrap section-space" id="about" aria-labelledby="about-heading"><div className="section-rail"><span>02</span><span>{settings.aboutRailLabel}</span></div><div className="about-grid"><div className="about-copy"><p className="eyebrow">{settings.aboutEyebrow}</p><h2 id="about-heading">{settings.aboutTitle} <em>{settings.aboutAccent}</em></h2><p className="body-large">{settings.aboutBody}</p><blockquote>“{settings.aboutQuote}”</blockquote><button className="text-link" type="button" onClick={() => onPlaceholder(settings.aboutRailLabel)}>{copy.readStory} <ArrowRight size={16} /></button></div><figure className="editorial-figure"><div className="image-frame image-frame-tall"><img src={settings.aboutImageUrl} alt={settings.aboutCaptionLeft} /></div><figcaption><span>{settings.aboutCaptionLeft}</span><span>{settings.aboutCaptionRight}</span></figcaption></figure></div></section>
+        <section className="about-section section-wrap section-space" id="about" aria-labelledby="about-heading"><div className="section-rail"><span>02</span><span>{settings.aboutRailLabel}</span></div><div className="about-grid"><div className="about-copy"><p className="eyebrow">{settings.aboutEyebrow}</p><h2 id="about-heading">{settings.aboutTitle} <em>{settings.aboutAccent}</em></h2><p className="body-large">{settings.aboutBody}</p><blockquote>“{settings.aboutQuote}”</blockquote><button className="text-link" type="button" onClick={() => scrollToId("contact")}>{copy.readStory} <ArrowRight size={16} /></button></div><figure className="editorial-figure"><div className="image-frame image-frame-tall"><img src={settings.aboutImageUrl} alt={settings.aboutCaptionLeft} /></div><figcaption><span>{settings.aboutCaptionLeft}</span><span>{settings.aboutCaptionRight}</span></figcaption></figure></div></section>
 
-        <section className="programs-section section-space" id="programs" aria-labelledby="programs-heading"><div className="section-wrap"><div className="section-rail"><span>03</span><span>{settings.programsRailLabel}</span></div><div className="section-heading-row"><div><p className="eyebrow">{settings.programsEyebrow}</p><h2 id="programs-heading">{settings.programsTitle}<br /><em>{settings.programsAccent}</em></h2></div><p className="section-summary">{settings.programsSummary}</p></div><div className="programs-layout"><div className="program-list">{programs.map((program: any, index: number) => <button className="program-row" type="button" key={program.id} onClick={() => onPlaceholder(program.title)}><span className="program-index">{String(index + 1).padStart(2, "0")}</span><span className="program-name"><strong>{program.title}</strong><small>{program.subtitle}</small></span><span className="program-detail">{program.description}</span><span className="program-tag">{program.tag}</span><ArrowUpRight size={19} className="program-arrow" /></button>)}</div><div className="audio-feature"><div className="audio-image"><img src={featuredProgram?.imageUrl || settings.heroImageUrl} alt={featuredProgram?.title ?? settings.audioCaptionLabel} /><span className="image-label">{settings.audioImageLabel}</span></div><button className={`play-button ${playing ? "is-playing" : ""}`} type="button" aria-label={playing ? "Pause sample" : "Play sample"} onClick={() => { setPlaying((value) => !value); toast(playing ? "Inspiration paused." : "A little Blue Decor inspiration."); }}>{playing ? <span className="pause-bars"><i /><i /></span> : <Play size={20} fill="currentColor" />}</button><div className="audio-caption"><span>{settings.audioCaptionLabel}</span><strong>{featuredProgram?.featureTitle ?? featuredProgram?.title}</strong><small>{featuredProgram?.featureSubtitle ?? featuredProgram?.subtitle}</small></div></div></div></div></section>
+        <section className="programs-section section-space" id="programs" aria-labelledby="programs-heading"><div className="section-wrap"><div className="section-rail"><span>03</span><span>{settings.programsRailLabel}</span></div><div className="section-heading-row"><div><p className="eyebrow">{settings.programsEyebrow}</p><h2 id="programs-heading">{settings.programsTitle}<br /><em>{settings.programsAccent}</em></h2></div><p className="section-summary">{settings.programsSummary}</p></div><div className="programs-layout"><div className="program-list">{programs.map((program: any, index: number) => <button className="program-row" type="button" key={program.id} onClick={() => setActiveModalItem({ type: "Programme Collection", title: program.title, subtitle: program.subtitle, description: program.description, imageUrl: program.imageUrl || settings.heroImageUrl, tag: program.tag, featureTitle: program.featureTitle, featureSubtitle: program.featureSubtitle })}><span className="program-index">{String(index + 1).padStart(2, "0")}</span><span className="program-name"><strong>{program.title}</strong><small>{program.subtitle}</small></span><span className="program-detail">{program.description}</span><span className="program-tag">{program.tag}</span><ArrowUpRight size={19} className="program-arrow" /></button>)}</div><div className="audio-feature"><div className="audio-image"><img src={featuredProgram?.imageUrl || settings.heroImageUrl} alt={featuredProgram?.title ?? settings.audioCaptionLabel} /><span className="image-label">{settings.audioImageLabel}</span></div><button className={`play-button ${playing ? "is-playing" : ""}`} type="button" aria-label={playing ? "Pause sample" : "Play sample"} onClick={() => { setPlaying((value) => !value); toast(playing ? "Inspiration paused." : "A little Blue Decor inspiration."); }}>{playing ? <span className="pause-bars"><i /><i /></span> : <Play size={20} fill="currentColor" />}</button><div className="audio-caption"><span>{settings.audioCaptionLabel}</span><strong>{featuredProgram?.featureTitle ?? featuredProgram?.title}</strong><small>{featuredProgram?.featureSubtitle ?? featuredProgram?.subtitle}</small></div></div></div></div></section>
 
-        <section className="services-section section-wrap section-space" id="services" aria-labelledby="services-heading"><div className="section-rail"><span>04</span><span>{settings.servicesRailLabel}</span></div><div className="section-heading-row services-heading"><div><p className="eyebrow">{settings.servicesEyebrow}</p><h2 id="services-heading">{settings.servicesTitle}<br /><em>{settings.servicesAccent}</em></h2></div><p className="section-summary">{settings.servicesSummary}</p></div><div className="services-grid">{services.map((service: any, index: number) => <button className="service-card" type="button" key={service.id} onClick={() => onPlaceholder(service.title)}><div className="service-image"><img src={service.imageUrl || programs[index % Math.max(programs.length, 1)]?.imageUrl || settings.heroImageUrl} alt={service.title} /><span>{service.title}</span></div><span className="service-top"><span>{String.fromCharCode(65 + index)}</span><Sparkles size={20} /></span><h3>{service.title}</h3><p>{service.description}</p><span className="service-link">Explore <ArrowUpRight size={16} /></span></button>)}</div></section>
+        <section className="services-section section-wrap section-space" id="services" aria-labelledby="services-heading"><div className="section-rail"><span>04</span><span>{settings.servicesRailLabel}</span></div><div className="section-heading-row services-heading"><div><p className="eyebrow">{settings.servicesEyebrow}</p><h2 id="services-heading">{settings.servicesTitle}<br /><em>{settings.servicesAccent}</em></h2></div><p className="section-summary">{settings.servicesSummary}</p></div><div className="services-grid">{services.map((service: any, index: number) => <button className="service-card" type="button" key={service.id} onClick={() => setActiveModalItem({ type: "Bespoke Service", title: service.title, description: service.description, imageUrl: service.imageUrl || programs[index % Math.max(programs.length, 1)]?.imageUrl || settings.heroImageUrl, tag: "Blue Decor Studio" })}><div className="service-image"><img src={service.imageUrl || programs[index % Math.max(programs.length, 1)]?.imageUrl || settings.heroImageUrl} alt={service.title} /><span>{service.title}</span></div><span className="service-top"><span>{String.fromCharCode(65 + index)}</span><Sparkles size={20} /></span><h3>{service.title}</h3><p>{service.description}</p><span className="service-link">View details <ArrowUpRight size={16} /></span></button>)}</div></section>
 
         <section className="event-section section-wrap section-space" aria-labelledby="event-heading"><div className="event-image"><img src={settings.eventImageUrl} alt={settings.eventImageLabel} /><span className="image-label image-label-dark">{settings.eventImageLabel}</span></div><div className="event-copy"><p className="eyebrow">{settings.eventEyebrow}</p><h2 id="event-heading">{settings.eventTitle}<br /><em>{settings.eventAccent}</em></h2><p className="body-large">{settings.eventBody}</p><button className="button button-outline" type="button" onClick={() => scrollToId("contact")}>{settings.eventCtaLabel} <ArrowUpRight size={17} /></button></div></section>
 
-        <section className="journal-section section-space" id="journal" aria-labelledby="journal-heading"><div className="section-wrap"><div className="section-rail"><span>05</span><span>{settings.journalRailLabel}</span></div><div className="section-heading-row"><div><p className="eyebrow">{settings.journalEyebrow}</p><h2 id="journal-heading">{settings.journalTitle}<br /><em>{settings.journalAccent}</em></h2></div><button className="text-link" type="button" onClick={() => onPlaceholder(settings.journalRailLabel)}>{copy.viewNotes} <ArrowRight size={16} /></button></div><div className="journal-list">{journalEntries.map((note: any) => <button type="button" className="journal-row" key={note.id} onClick={() => onPlaceholder(note.title)}><span className="journal-date">{note.dateLabel}</span><strong>{note.title}</strong><span className="journal-kind">{note.category}</span><ArrowUpRight size={18} /></button>)}</div></div></section>
+        <section className="journal-section section-space" id="journal" aria-labelledby="journal-heading"><div className="section-wrap"><div className="section-rail"><span>05</span><span>{settings.journalRailLabel}</span></div><div className="section-heading-row"><div><p className="eyebrow">{settings.journalEyebrow}</p><h2 id="journal-heading">{settings.journalTitle}<br /><em>{settings.journalAccent}</em></h2></div><button className="text-link" type="button" onClick={() => scrollToId("contact")}>{copy.viewNotes} <ArrowRight size={16} /></button></div><div className="journal-list">{journalEntries.map((note: any) => <button type="button" className="journal-row" key={note.id} onClick={() => setActiveModalItem({ type: "Journal Dispatch", title: note.title, description: note.body || "Field notes and studio insights from the Blue Decor editorial room.", category: note.category, dateLabel: note.dateLabel, imageUrl: settings.heroImageUrl })}><span className="journal-date">{note.dateLabel}</span><strong>{note.title}</strong><span className="journal-kind">{note.category}</span><ArrowUpRight size={18} /></button>)}</div></div></section>
 
         <section className="contact-section section-wrap section-space" id="contact" aria-labelledby="contact-heading"><div className="section-rail section-rail-dark"><span>06</span><span>{settings.contactRailLabel}</span></div><div className="contact-grid"><div className="contact-copy"><p className="eyebrow eyebrow-light">{settings.contactEyebrow}</p><h2 id="contact-heading">{settings.contactTitle}<br /><em>{settings.contactAccent}</em></h2><p>{settings.contactBody}</p><div className="contact-details"><span><Mail size={15} /> {settings.contactEmail}</span><span><MapPin size={15} /> {settings.contactLocation}</span></div></div><form className="contact-form" onSubmit={handleSubmit}><label>{copy.name}<input name="name" required placeholder={copy.placeholderName} /></label><label>{copy.email}<input name="email" type="email" required placeholder={copy.placeholderEmail} /></label><label>{copy.brief}<textarea name="brief" required placeholder={copy.placeholderBrief} rows={3} /></label><button className="button button-signal button-submit" type="submit" disabled={submitInquiry.isPending}>{submitInquiry.isPending ? "Sending…" : copy.send} <Send size={16} /></button></form></div></section>
       </main>
+
+      {activeModalItem && (
+        <div className="modal-backdrop" onClick={() => setActiveModalItem(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setActiveModalItem(null)} aria-label="Close details">
+              <X size={20} />
+            </button>
+            {activeModalItem.imageUrl && (
+              <div className="modal-image-wrap">
+                <img src={activeModalItem.imageUrl} alt={activeModalItem.title} />
+                <span className="modal-badge">{activeModalItem.tag || activeModalItem.category || activeModalItem.type}</span>
+              </div>
+            )}
+            <div className="modal-body">
+              <span className="modal-type">{activeModalItem.type} {activeModalItem.dateLabel ? `• ${activeModalItem.dateLabel}` : ""}</span>
+              <h3 className="modal-title">{activeModalItem.title}</h3>
+              {activeModalItem.subtitle && <p className="modal-subtitle">{activeModalItem.subtitle}</p>}
+              <p className="modal-desc">{activeModalItem.description}</p>
+              {activeModalItem.featureTitle && (
+                <div className="modal-feature-box">
+                  <span className="modal-feature-title">{activeModalItem.featureTitle}</span>
+                  {activeModalItem.featureSubtitle && <span className="modal-feature-sub">{activeModalItem.featureSubtitle}</span>}
+                </div>
+              )}
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="button button-signal"
+                  onClick={() => handlePlanClick(activeModalItem.title)}
+                >
+                  Plan this celebration <ArrowUpRight size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="desk-quiet-button"
+                  onClick={() => setActiveModalItem(null)}
+                >
+                  Close overview
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <footer className="site-footer section-wrap"><div className="footer-brand"><a className="brand" href="#top"><span className="brand-mark" aria-hidden="true"><Radio size={17} /></span><span className="brand-wordmark"><strong>{settings.siteName}</strong><span>{settings.brandLine}</span></span></a><p>{settings.heroTitle}<br />{settings.heroAccent}</p></div><div className="footer-links"><div><span className="footer-label">{settings.footerNavigateLabel}</span><a href="#about">{copy.about}</a><a href="#programs">{copy.programs}</a><a href="#services">{copy.services}</a><a href="#journal">{copy.journal}</a></div><div><span className="footer-label">{settings.footerFollowLabel}</span><a href={settings.instagramUrl} target="_blank" rel="noreferrer"><Instagram size={16} /> Instagram</a><a href={settings.youtubeUrl} target="_blank" rel="noreferrer"><Youtube size={16} /> YouTube</a><a href={settings.facebookUrl} target="_blank" rel="noreferrer"><Facebook size={16} /> Facebook</a></div></div><div className="footer-bottom"><span>© {new Date().getFullYear()} {settings.siteName} {settings.brandLine}</span><span>{settings.footerBuiltLine}</span></div></footer>
     </div>

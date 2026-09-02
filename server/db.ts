@@ -28,46 +28,46 @@ const asset = {
 
 const defaultSettings = {
   id: 1,
-  siteName: "Kasha",
-  brandLine: "Multimedia",
-  heroEyebrow: "On air / Addis Ababa",
-  heroTitle: "Stories with a pulse.",
-  heroAccent: "Places with a memory.",
-  heroIntro: "Kasha Multimedia connects radio, documentary, culture, and events to make room for the voices that move Ethiopia forward.",
-  heroCtaLabel: "Find your frequency",
-  heroImageUrl: asset.hero,
-  heroAsideTitle: "Every Sunday for two hours.",
-  heroAsideBody: "A live conversation with the country's stories, ideas, and inherited ways of knowing.",
+  siteName: "Blue Decor",
+  brandLine: "Celebrations, styled beautifully",
+  heroEyebrow: "Events made memorable",
+  heroTitle: "Make the moment",
+  heroAccent: "feel unforgettable.",
+  heroIntro: "Friendly, thoughtful décor for weddings, birthdays, graduations, baby showers, and every beautiful reason to gather.",
+  heroCtaLabel: "Plan your celebration",
+  heroImageUrl: "/images/blue-decore/celebration-reference.jpg",
+  heroAsideTitle: "Weddings • birthdays • graduations",
+  heroAsideBody: "One warm studio for the moments your people will remember.",
   heroFooterIndex: "01 / 06",
-  heroFooterDescriptor: "Radio + online media + event promotion",
-  tickerItems: "Broadcast|Documentary|Cultural memory|Open conversation|Events",
-  aboutEyebrow: "A programme, a platform, a point of view",
-  aboutRailLabel: "About the signal",
-  aboutTitle: "We go closer to the country's",
-  aboutAccent: "living archive.",
-  aboutBody: "Kasha began as a weekly radio programme built to inform, teach, compare, and delight. Today, it is a multimedia practice for the stories that deserve a wider room: indigenous knowledge, cultural value, natural memory, and the people carrying all of it into tomorrow.",
-  aboutQuote: "To understand where we are going, we listen for what the land and its people already know.",
-  aboutImageUrl: asset.culture,
-  aboutCaptionLeft: "Field recording / Addis Ababa",
-  aboutCaptionRight: "03° 28' N / 38° 44' E",
-  programsEyebrow: "A frequency for every kind of curiosity",
-  programsRailLabel: "Programmes",
-  programsTitle: "One signal.",
-  programsAccent: "Many ways in.",
-  programsSummary: "Ten programme ideas. One shared intention: entertain while making space for deeper thought, better questions, and the stories that rarely get the first microphone.",
+  heroFooterDescriptor: "Event décor + joyful details + beautiful memories",
+  tickerItems: "Weddings|Birthdays|Graduations|Baby showers|Special occasions",
+  aboutEyebrow: "The Blue Decor approach",
+  aboutRailLabel: "About the studio",
+  aboutTitle: "Beautiful details",
+  aboutAccent: "for your special day.",
+  aboutBody: "Tiffany blue décor for weddings, birthdays, graduations, baby showers, and the celebrations that deserve a beautiful frame.",
+  aboutQuote: "We will help you make every occasion memorable.",
+  aboutImageUrl: "/images/blue-decore/weddings.jpg",
+  aboutCaptionLeft: "Celebration styling / Local studio",
+  aboutCaptionRight: "Made to travel",
+  programsRailLabel: "Collections",
+  programsEyebrow: "A timeless way to sit with the stories",
+  programsTitle: "One studio.",
+  programsAccent: "All kinds of celebrations.",
+  programsSummary: "From weddings to graduations to baby showers, we shape a joyful setting that makes every event easier to remember.",
   audioImageLabel: "Listen / 00:48",
   audioCaptionLabel: "Latest signal",
-  servicesEyebrow: "From the first note to the full room",
   servicesRailLabel: "What we make",
-  servicesTitle: "Built for stories",
-  servicesAccent: "that travel.",
-  servicesSummary: "Kasha brings an editorial eye and a production hand to every format. The medium changes; the care does not.",
+  servicesEyebrow: "From the first detail to the full room",
+  servicesTitle: "Built for",
+  servicesAccent: "your occasion.",
+  servicesSummary: "Blue Decor brings an editorial eye and a production hand to every format. The medium changes; the care does not.",
   eventEyebrow: "A room for the next story",
   eventTitle: "Make the moment",
   eventAccent: "worth remembering.",
   eventBody: "From a cultural gathering to a public conversation, we help events find their voice before the doors open and keep it moving after the lights go down.",
   eventCtaLabel: "Talk event production",
-  eventImageUrl: asset.event,
+  eventImageUrl: "/images/blue-decore/graduations.jpg",
   eventImageLabel: "Event promotion / Open room",
   journalEyebrow: "Notes from the desk",
   journalRailLabel: "Journal / field notes",
@@ -77,16 +77,16 @@ const defaultSettings = {
   contactRailLabel: "Start a conversation",
   contactTitle: "What should",
   contactAccent: "we listen to?",
-  contactBody: "Tell us what is on your mind, what you are building, or whose voice needs a better signal. We will take it from there.",
-  contactEmail: "hello@kashamultimedia.et",
-  contactLocation: "Addis Ababa, Ethiopia",
+  contactBody: "Tell us what you are planning, what you are building, or whose celebration needs a beautiful frame. We will take it from there.",
+  contactEmail: "hello@bluedecore.com",
+  contactLocation: "Local studio",
   instagramUrl: "https://instagram.com",
   youtubeUrl: "https://youtube.com",
   facebookUrl: "https://facebook.com",
   footerNavigateLabel: "Navigate",
-  footerFollowLabel: "Follow the signal",
-  footerBuiltLine: "Built in Addis Ababa / Made to travel",
-} as const;
+  footerFollowLabel: "Follow the studio",
+  footerBuiltLine: "Made with care",
+};
 
 export async function getDb() {
   if (!database && process.env.DATABASE_URL) database = drizzle(process.env.DATABASE_URL);
@@ -255,26 +255,70 @@ export async function firestoreSaveSettings(values: Record<string, unknown>) {
 
 export async function firestoreCreate(collection: string, values: Record<string, unknown>) {
   const ref = firestoreCollection(collection).doc();
-  const id = Math.abs(ref.id.split("").reduce((sum: number, char: string) => sum * 31 + char.charCodeAt(0), 7));
+  const id = Math.floor(Date.now() / 1000) * 1000 + Math.floor(Math.random() * 900) + 100;
   await ref.set({ id, ...values, createdAt: new Date(), updatedAt: new Date() });
   return { id };
 }
 
 export async function firestoreUpdate(collection: string, id: number, values: Record<string, unknown>) {
-  const snapshot = await firestoreCollection(collection).where("id", "==", id).limit(1).get();
-  if (snapshot.empty) throw new Error("Content item was not found");
-  await snapshot.docs[0]!.ref.set({ ...values, updatedAt: new Date() }, { merge: true });
+  const numId = Number(id);
+  const snapshot = await firestoreCollection(collection).where("id", "==", numId).limit(1).get();
+  if (!snapshot.empty) {
+    await snapshot.docs[0]!.ref.set({ ...values, updatedAt: new Date() }, { merge: true });
+    return;
+  }
+  const directDoc = await firestoreCollection(collection).doc(String(id)).get();
+  if (directDoc.exists) {
+    await directDoc.ref.set({ ...values, updatedAt: new Date() }, { merge: true });
+    return;
+  }
+  throw new Error("Content item was not found");
 }
 
 export async function firestoreDelete(collection: string, id: number) {
-  const snapshot = await firestoreCollection(collection).where("id", "==", id).limit(1).get();
-  if (!snapshot.empty) await snapshot.docs[0]!.ref.delete();
+  const numId = Number(id);
+  const snapshot = await firestoreCollection(collection).where("id", "==", numId).limit(1).get();
+  if (!snapshot.empty) {
+    await snapshot.docs[0]!.ref.delete();
+    return;
+  }
+  const directDoc = await firestoreCollection(collection).doc(String(id)).get();
+  if (directDoc.exists) {
+    await directDoc.ref.delete();
+  }
 }
 
 export async function firestorePublicContent() {
-  const settings = await firestoreGetSettings();
-  const published = async (collection: string) => (await firestoreList(collection)).filter((row: Record<string, any>) => row.isPublished !== false);
-  return { settings, programs: await published(firestoreCollections.programs), services: await published(firestoreCollections.services), events: await published(firestoreCollections.events), journalEntries: await published(firestoreCollections.journal) };
+  try {
+    const settings = await firestoreGetSettings();
+    const published = async (collection: string) => (await firestoreList(collection)).filter((row: Record<string, any>) => row.isPublished !== false);
+    return { settings, programs: await published(firestoreCollections.programs), services: await published(firestoreCollections.services), events: await published(firestoreCollections.events), journalEntries: await published(firestoreCollections.journal) };
+  } catch (error) {
+    console.error("Firestore content fetch error, serving default content:", error);
+    return {
+      settings: defaultSettings,
+      programs: [
+        { id: 1, title: "Wedding Moments", subtitle: "Ceremony + reception", description: "Romantic blue-and-ivory styling, floral moments, and a beautiful setting for your yes.", tag: "Weddings", imageUrl: "/images/blue-decore/weddings.jpg", featureTitle: "A day worth remembering", featureSubtitle: "Blue, soft, and entirely yours", sortOrder: 1, isPublished: true },
+        { id: 2, title: "Birthday Joy", subtitle: "Milestones + surprises", description: "Playful, polished décor that makes every age and every guest feel celebrated.", tag: "Birthdays", imageUrl: "/images/blue-decore/birthdays.jpg", featureTitle: "Make a little more magic", featureSubtitle: "Bright details for the big day", sortOrder: 2, isPublished: true },
+        { id: 3, title: "Graduate Glow", subtitle: "Photo moments + parties", description: "A proud, photo-ready celebration for the next chapter, styled in confident blue.", tag: "Graduations", imageUrl: "/images/blue-decore/graduations.jpg", featureTitle: "Celebrate the next chapter", featureSubtitle: "A setting made for proud photos", sortOrder: 3, isPublished: true },
+        { id: 4, title: "Baby Showers", subtitle: "Sweet beginnings", description: "Gentle, joyful styling for welcoming a new little love and gathering your people.", tag: "Baby showers", imageUrl: "/images/blue-decore/baby-showers.jpg", featureTitle: "The sweetest beginning", featureSubtitle: "Soft details, warm memories", sortOrder: 4, isPublished: true },
+      ],
+      services: [
+        { id: 1, title: "Wedding Décor", description: "From ceremony backdrops to reception tables, we style the whole love story.", iconKey: "mic", sortOrder: 1, isPublished: true },
+        { id: 2, title: "Birthday Décor", description: "Beautiful balloons, cake tables, and cheerful details made for your moment.", iconKey: "camera", sortOrder: 2, isPublished: true },
+        { id: 3, title: "Graduation Décor", description: "Blue-forward photo corners and party styling for every proud achievement.", iconKey: "calendar", sortOrder: 3, isPublished: true },
+        { id: 4, title: "Baby Shower Décor", description: "Soft, joyful styling for a beautiful welcome and a room full of love.", iconKey: "radio", sortOrder: 4, isPublished: true },
+      ],
+      events: [
+        { id: 1, title: "Make the moment worth remembering.", description: defaultSettings.eventBody, imageUrl: "/images/blue-decore/graduations.jpg", ctaLabel: defaultSettings.eventCtaLabel, ctaTarget: "#contact", sortOrder: 1, isPublished: true },
+      ],
+      journalEntries: [
+        { id: 1, title: "A celebration starts with a feeling", category: "Studio note", dateLabel: "Blue Decor / 01", sortOrder: 1, isPublished: true },
+        { id: 2, title: "The little details guests remember", category: "Ideas", dateLabel: "Blue Decor / 02", sortOrder: 2, isPublished: true },
+        { id: 3, title: "Making room for your people", category: "Planning", dateLabel: "Blue Decor / 03", sortOrder: 3, isPublished: true },
+      ],
+    };
+  }
 }
 
 export async function firestoreDashboardSummary() {

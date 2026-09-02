@@ -8,9 +8,9 @@ import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { firestoreCreate, firestoreDashboardSummary, firestoreDelete, firestoreGetSettings, firestoreList, firestorePublicContent, firestoreSaveSettings, firestoreUpdate } from "./db";
 import { normalizeImageSource, requireGoogleDriveImage } from "./googleDriveImages";
 
-const idInput = z.object({ id: z.number().int().positive() });
-const publishedInput = z.object({ id: z.number().int().positive(), isPublished: z.boolean() });
-const orderInput = z.object({ id: z.number().int().positive(), sortOrder: z.number().int().min(0) });
+const idInput = z.object({ id: z.number() });
+const publishedInput = z.object({ id: z.number(), isPublished: z.boolean() });
+const orderInput = z.object({ id: z.number(), sortOrder: z.number().int().min(0) });
 const optionalUrl = z.string().url().or(z.literal(""));
 
 const settingsInput = z.object({
@@ -79,6 +79,23 @@ export const appRouter = router({
       connectDrive: adminProcedure.input(z.object({ fileName: z.string().min(1).max(255), altText: z.string().min(1).max(320), category: z.string().min(1).max(100), driveLink: z.string().url() })).mutation(async ({ input }) => {
         const driveImage = await requireGoogleDriveImage(input.driveLink);
         return { ...(await firestoreCreate("mediaAssets", { fileName: input.fileName, storageKey: `google-drive:${driveImage.fileId}`, url: driveImage.url, altText: input.altText, category: input.category })), ...driveImage };
+      }),
+      uploadDirect: adminProcedure.input(z.object({ fileName: z.string().min(1).max(255), altText: z.string().min(1).max(320), category: z.string().min(1).max(100), fileData: z.string().min(1) })).mutation(async ({ input }) => {
+        const url = input.fileData;
+        const result = await firestoreCreate("mediaAssets", { fileName: input.fileName, storageKey: `direct-upload:${Date.now()}`, url, altText: input.altText, category: input.category });
+        return { ...result, url };
+      }),
+      update: adminProcedure.input(z.object({
+        id: z.number(),
+        fileName: z.string().min(1).max(255).optional(),
+        altText: z.string().min(1).max(320).optional(),
+        category: z.string().min(1).max(100).optional(),
+        url: z.string().min(1).optional(),
+      })).mutation(async ({ input }) => {
+        const { id, ...updates } = input;
+        const imageUrl = updates.url ? await normalizeImageSource(updates.url) : undefined;
+        await firestoreUpdate("mediaAssets", id, { ...updates, ...(imageUrl ? { url: imageUrl } : {}) });
+        return { success: true };
       }),
       remove: adminProcedure.input(idInput).mutation(async ({ input }) => { await firestoreDelete("mediaAssets", input.id); return { success: true }; }),
     }),

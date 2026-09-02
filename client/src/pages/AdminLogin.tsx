@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, ArrowUpRight, LockKeyhole, Moon, Sun } from "lucide-react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { firebaseAuth, FIREBASE_ADMIN_EMAIL } from "@/lib/firebase";
 import { signInWithEmailAndPassword, signOut as signOutFirebase } from "firebase/auth";
@@ -25,11 +26,18 @@ function firebaseErrorMessage(error: unknown) {
 
 export default function AdminLogin() {
   const [, setLocation] = useLocation();
+  const { user, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!loading && user?.role === "admin") {
+      setLocation("/admin/dashboard");
+    }
+  }, [user, loading, setLocation]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -57,5 +65,5 @@ export default function AdminLogin() {
     }
   };
 
-  return <main className="admin-shell"><div className="admin-topbar"><a className="admin-back" href="/"><ArrowLeft size={15} /> Back to Kasha</a><button className="header-tool" type="button" onClick={toggleTheme} aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}>{theme === "light" ? <Moon size={16} /> : <Sun size={16} />}</button></div><section className="admin-card" aria-labelledby="admin-heading"><div className="admin-card-mark"><LockKeyhole size={20} /></div><p className="eyebrow">Kasha desk / private access</p><h1 id="admin-heading">Sign in to<br /><em>the desk.</em></h1><p className="admin-intro">Use your Firebase administrator email and password.</p><form className="admin-form" onSubmit={handleSubmit}><label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Administrator email" autoComplete="email" /></label><label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" autoComplete="current-password" /></label>{message && <p className="admin-error" role="alert">{message}</p>}<button className="button button-signal" type="submit" disabled={isSubmitting}>{isSubmitting ? "Signing in…" : "Enter the desk"} <ArrowUpRight size={16} /></button></form><p className="admin-note">Authentication is handled directly by Firebase Email/Password.</p></section></main>;
+  return <main className="admin-shell"><div className="admin-topbar"><a className="admin-back" href="/"><ArrowLeft size={15} /> Back to Blue Decor</a><button className="header-tool" type="button" onClick={toggleTheme} aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}>{theme === "light" ? <Moon size={16} /> : <Sun size={16} />}</button></div><section className="admin-card" aria-labelledby="admin-heading"><div className="admin-card-mark"><LockKeyhole size={20} /></div><p className="eyebrow">Blue Decor desk / private access</p><h1 id="admin-heading">Sign in to<br /><em>the desk.</em></h1><p className="admin-intro">Use your Firebase administrator email and password.</p><form className="admin-form" onSubmit={handleSubmit}><label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Administrator email" autoComplete="email" /></label><label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" autoComplete="current-password" /></label>{message && <p className="admin-error" role="alert">{message}</p>}<button className="button button-signal" type="submit" disabled={isSubmitting}>{isSubmitting ? "Signing in…" : "Enter the desk"} <ArrowUpRight size={16} /></button></form><p className="admin-note">Authentication is handled directly by Firebase Email/Password.</p></section></main>;
 }

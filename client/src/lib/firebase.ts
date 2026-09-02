@@ -1,6 +1,6 @@
 // Blue Decor Firebase client setup for authentication and analytics.
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { browserLocalPersistence, getAuth, setPersistence } from "firebase/auth";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
 const env = import.meta.env;
@@ -29,3 +29,6 @@ if (typeof window !== "undefined" && firebaseConfig.measurementId) {
 }
 
 export const firebaseAuth = getAuth(firebaseApp);
+if (typeof window !== "undefined") {
+  void setPersistence(firebaseAuth, browserLocalPersistence).catch(() => undefined);
+}
