@@ -200,7 +200,8 @@ export async function dashboardSummary() {
 
 export const contentTables = { programs, services, events, journalEntries, mediaAssets, inquiries, siteSettings };
 
-export const firestoreEnabled = () => Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+// Firebase is the sole runtime content store for the deployed demo. SQL migrations remain only as historical files.
+export const firestoreEnabled = () => true;
 
 function firestoreCollection(name: string) {
   return getFirebaseFirestore().collection(name);
