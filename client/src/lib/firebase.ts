@@ -3,17 +3,22 @@ import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
-export const FIREBASE_ADMIN_EMAIL = "tadi@gmail.com";
+const env = import.meta.env;
+export const FIREBASE_ADMIN_EMAIL = String(env.VITE_FIREBASE_ADMIN_EMAIL || "tadi@gmail.com").trim().toLowerCase();
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBDfKknrSnsfkkoUYWA0oiN8SvTFaiz99s",
-  authDomain: "blue-decore.firebaseapp.com",
-  projectId: "blue-decore",
-  storageBucket: "blue-decore.firebasestorage.app",
-  messagingSenderId: "49207178042",
-  appId: "1:49207178042:web:75574a3e86680dc502d603",
-  measurementId: "G-8K69HDP3E9",
+  apiKey: String(env.VITE_FIREBASE_API_KEY || "").trim(),
+  authDomain: String(env.VITE_FIREBASE_AUTH_DOMAIN || "").trim(),
+  projectId: String(env.VITE_FIREBASE_PROJECT_ID || "").trim(),
+  storageBucket: String(env.VITE_FIREBASE_STORAGE_BUCKET || "").trim(),
+  messagingSenderId: String(env.VITE_FIREBASE_MESSAGING_SENDER_ID || "").trim(),
+  appId: String(env.VITE_FIREBASE_APP_ID || "").trim(),
+  measurementId: String(env.VITE_FIREBASE_MEASUREMENT_ID || "").trim(),
 };
+
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.appId) {
+  console.warn("[Firebase] Missing VITE_FIREBASE_* configuration; Firebase features may be unavailable.");
+}
 
 const firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
 

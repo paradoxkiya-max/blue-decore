@@ -3,11 +3,6 @@
   "buildCommand": "pnpm build",
   "outputDirectory": "dist/public",
   "framework": "vite",
-  "functions": {
-    "api/rest/[...path].ts": {
-      "maxDuration": 30
-    }
-  },
   "rewrites": [
     { "source": "/api/rest/:path*", "destination": "/api/rest?path=:path*" },
     { "source": "/((?!api(?:/|$)).*)", "destination": "/index.html" }
