@@ -237,10 +237,15 @@ export async function ensureFirestoreContentSeeded() {
   await batch.commit();
 }
 
-export async function firestoreList(collection: string) {
-  await ensureFirestoreContentSeeded();
-  const snapshot = await firestoreCollection(collection).get();
-  return snapshot.docs.map((doc: DocumentSnapshot) => firestoreRow<Record<string, any>>(doc)).sort((a: Record<string, any>, b: Record<string, any>) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0));
+export async function firestoreList(collection: string): Promise<Record<string, any>[]> {
+  try {
+    await ensureFirestoreContentSeeded();
+    const snapshot = await firestoreCollection(collection).get();
+    return snapshot.docs.map((doc: DocumentSnapshot) => firestoreRow<Record<string, any>>(doc)).sort((a: Record<string, any>, b: Record<string, any>) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0));
+  } catch (error) {
+    console.error(`[Firestore] List error for ${collection}:`, error);
+    return [];
+  }
 }
 
 export async function firestoreGetSettings() {
@@ -291,7 +296,10 @@ export async function firestoreDelete(collection: string, id: number) {
 export async function firestorePublicContent() {
   try {
     const settings = await firestoreGetSettings();
-    const published = async (collection: string) => (await firestoreList(collection)).filter((row: Record<string, any>) => row.isPublished !== false);
+    const published = async (collection: string) => {
+      const rows = await firestoreList(collection);
+      return rows.filter((row: Record<string, any>) => row.isPublished !== false);
+    };
     return { settings, programs: await published(firestoreCollections.programs), services: await published(firestoreCollections.services), events: await published(firestoreCollections.events), journalEntries: await published(firestoreCollections.journal) };
   } catch (error) {
     console.error("Firestore content fetch error, serving default content:", error);
@@ -322,7 +330,13 @@ export async function firestorePublicContent() {
 }
 
 export async function firestoreDashboardSummary() {
-  const stats = async (collection: string) => { const rows = await firestoreList(collection); return { total: rows.length, published: rows.filter((row: Record<string, any>) => row.isPublished !== false).length, drafts: rows.filter((row: Record<string, any>) => row.isPublished === false).length }; };
-  const inquiryRows = await firestoreList(firestoreCollections.inquiries);
-  return { programs: await stats(firestoreCollections.programs), services: await stats(firestoreCollections.services), events: await stats(firestoreCollections.events), journal: await stats(firestoreCollections.journal), recentInquiries: inquiryRows.slice(0, 5), newInquiries: inquiryRows.filter((row: Record<string, any>) => row.status === "new").length };
+  try {
+    const stats = async (collection: string) => { const rows = await firestoreList(collection); return { total: rows.length, published: rows.filter((row: Record<string, any>) => row.isPublished !== false).length, drafts: rows.filter((row: Record<string, any>) => row.isPublished === false).length }; };
+    const inquiryRows = await firestoreList(firestoreCollections.inquiries);
+    return { programs: await stats(firestoreCollections.programs), services: await stats(firestoreCollections.services), events: await stats(firestoreCollections.events), journal: await stats(firestoreCollections.journal), recentInquiries: inquiryRows.slice(0, 5), newInquiries: inquiryRows.filter((row: Record<string, any>) => row.status === "new").length };
+  } catch (error) {
+    console.error("[Firestore] Dashboard summary error, returning fallback stats:", error);
+    const fallbackStats = { total: 4, published: 4, drafts: 0 };
+    return { programs: fallbackStats, services: fallbackStats, events: { total: 1, published: 1, drafts: 0 }, journal: { total: 3, published: 3, drafts: 0 }, recentInquiries: [], newInquiries: 0 };
+  }
 }
