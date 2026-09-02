@@ -9,8 +9,6 @@ import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { api } from "@/lib/api";
 
-const asset = { mark: "/manus-storage/kasha-signal-mark_87b5eda2.png" };
-
 const celebrationPackages = [
   { id: "weddings", title: "Wedding Moments", subtitle: "Ceremony + reception", tag: "Weddings", description: "Romantic blue-and-ivory styling, floral moments, and a beautiful setting for your yes.", imageUrl: "/images/blue-decore/weddings.jpg", featureTitle: "A day worth remembering", featureSubtitle: "Blue, soft, and entirely yours" },
   { id: "birthdays", title: "Birthday Joy", subtitle: "Milestones + surprises", tag: "Birthdays", description: "Playful, polished décor that makes every age and every guest feel celebrated.", imageUrl: "/images/blue-decore/birthdays.jpg", featureTitle: "Make a little more magic", featureSubtitle: "Bright details for the big day" },
@@ -79,7 +77,7 @@ export default function Home() {
     <div className="kasha-page">
       <header className={`site-header ${hasScrolled ? "is-scrolled" : ""}`}>
         <a className="brand" href="#top" aria-label={`${settings.siteName} ${settings.brandLine} home`} onClick={closeMenu}>
-          <img src={asset.mark} alt="" className="brand-mark" />
+          <span className="brand-mark" aria-hidden="true"><Radio size={17} /></span>
           <span className="brand-wordmark"><strong>{settings.siteName}</strong><span>{settings.brandLine}</span></span>
         </a>
         <div className="header-tools">
@@ -116,7 +114,7 @@ export default function Home() {
         <section className="contact-section section-wrap section-space" id="contact" aria-labelledby="contact-heading"><div className="section-rail section-rail-dark"><span>06</span><span>{settings.contactRailLabel}</span></div><div className="contact-grid"><div className="contact-copy"><p className="eyebrow eyebrow-light">{settings.contactEyebrow}</p><h2 id="contact-heading">{settings.contactTitle}<br /><em>{settings.contactAccent}</em></h2><p>{settings.contactBody}</p><div className="contact-details"><span><Mail size={15} /> {settings.contactEmail}</span><span><MapPin size={15} /> {settings.contactLocation}</span></div></div><form className="contact-form" onSubmit={handleSubmit}><label>{copy.name}<input name="name" required placeholder={copy.placeholderName} /></label><label>{copy.email}<input name="email" type="email" required placeholder={copy.placeholderEmail} /></label><label>{copy.brief}<textarea name="brief" required placeholder={copy.placeholderBrief} rows={3} /></label><button className="button button-signal button-submit" type="submit" disabled={submitInquiry.isPending}>{submitInquiry.isPending ? "Sending…" : copy.send} <Send size={16} /></button></form></div></section>
       </main>
 
-      <footer className="site-footer section-wrap"><div className="footer-brand"><a className="brand" href="#top"><img src={asset.mark} alt="" className="brand-mark" /><span className="brand-wordmark"><strong>{settings.siteName}</strong><span>{settings.brandLine}</span></span></a><p>{settings.heroTitle}<br />{settings.heroAccent}</p></div><div className="footer-links"><div><span className="footer-label">{settings.footerNavigateLabel}</span><a href="#about">{copy.about}</a><a href="#programs">{copy.programs}</a><a href="#services">{copy.services}</a><a href="#journal">{copy.journal}</a></div><div><span className="footer-label">{settings.footerFollowLabel}</span><a href={settings.instagramUrl} target="_blank" rel="noreferrer"><Instagram size={16} /> Instagram</a><a href={settings.youtubeUrl} target="_blank" rel="noreferrer"><Youtube size={16} /> YouTube</a><a href={settings.facebookUrl} target="_blank" rel="noreferrer"><Facebook size={16} /> Facebook</a></div></div><div className="footer-bottom"><span>© {new Date().getFullYear()} {settings.siteName} {settings.brandLine}</span><span>{settings.footerBuiltLine}</span></div></footer>
+      <footer className="site-footer section-wrap"><div className="footer-brand"><a className="brand" href="#top"><span className="brand-mark" aria-hidden="true"><Radio size={17} /></span><span className="brand-wordmark"><strong>{settings.siteName}</strong><span>{settings.brandLine}</span></span></a><p>{settings.heroTitle}<br />{settings.heroAccent}</p></div><div className="footer-links"><div><span className="footer-label">{settings.footerNavigateLabel}</span><a href="#about">{copy.about}</a><a href="#programs">{copy.programs}</a><a href="#services">{copy.services}</a><a href="#journal">{copy.journal}</a></div><div><span className="footer-label">{settings.footerFollowLabel}</span><a href={settings.instagramUrl} target="_blank" rel="noreferrer"><Instagram size={16} /> Instagram</a><a href={settings.youtubeUrl} target="_blank" rel="noreferrer"><Youtube size={16} /> YouTube</a><a href={settings.facebookUrl} target="_blank" rel="noreferrer"><Facebook size={16} /> Facebook</a></div></div><div className="footer-bottom"><span>© {new Date().getFullYear()} {settings.siteName} {settings.brandLine}</span><span>{settings.footerBuiltLine}</span></div></footer>
     </div>
   );
 }
