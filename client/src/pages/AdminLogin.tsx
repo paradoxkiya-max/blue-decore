@@ -6,7 +6,19 @@ import { firebaseAuth } from "@/lib/firebase";
 import { signInWithEmailAndPassword, signOut as signOutFirebase } from "firebase/auth";
 export { AdminDashboard } from "./AdminControlRoom";
 
-type SessionResponse = { role?: string; error?: string };
+type SessionResponse = { role?: unknown; error?: unknown };
+
+function readableError(value: unknown, fallback: string) {
+  if (typeof value === "string" && value.trim()) return value;
+  if (value instanceof Error && value.message) return value.message;
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    for (const key of ["message", "error", "detail", "description"]) {
+      if (typeof record[key] === "string" && record[key].trim()) return record[key] as string;
+    }
+  }
+  return fallback;
+}
 
 function firebaseErrorMessage(error: unknown) {
   const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
@@ -61,7 +73,7 @@ export default function AdminLogin() {
         }
       }
       if (!response.ok) {
-        throw new Error(result.error ?? (response.status >= 500
+        throw new Error(readableError(result.error, response.status >= 500
           ? "The admin session service is temporarily unavailable."
           : "Administrator access was not granted."));
       }
