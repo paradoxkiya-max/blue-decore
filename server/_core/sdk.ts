@@ -6,6 +6,7 @@ import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { isFirebaseAdminEmail, verifyFirebaseIdToken } from "../firebaseAdmin";
+import { firestoreEnabled } from "../db";
 import { ENV } from "./env";
 import type {
   ExchangeTokenRequest,
@@ -291,6 +292,9 @@ class SDKServer {
         const openId = `firebase_${firebaseToken.uid}`;
         const email = firebaseToken.email ?? null;
         const role = isFirebaseAdminEmail(email) ? "admin" : "user";
+        if (firestoreEnabled()) {
+          return { id: 0, openId, name: firebaseToken.name ?? email ?? "Firebase user", email, loginMethod: "firebase", role, createdAt: new Date(0), updatedAt: new Date(), lastSignedIn: new Date() } as AuthenticatedUser;
+        }
         await db.upsertUser({
           openId,
           name: firebaseToken.name ?? email ?? "Firebase user",

@@ -13,6 +13,7 @@ import {
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { getFirebaseFirestore } from "./firebaseAdmin";
 
 let database: ReturnType<typeof drizzle> | null = null;
 let seedPromise: Promise<void> | null = null;
@@ -197,3 +198,85 @@ export async function dashboardSummary() {
 }
 
 export const contentTables = { programs, services, events, journalEntries, mediaAssets, inquiries, siteSettings };
+
+export const firestoreEnabled = () => Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+
+function firestoreCollection(name: string) {
+  return getFirebaseFirestore().collection(name);
+}
+
+function firestoreRow<T extends Record<string, any>>(snapshot: FirebaseFirestore.DocumentSnapshot, fallbackId?: number): T {
+  const value = snapshot.data() ?? {};
+  return { id: Number(value.id ?? fallbackId ?? snapshot.id), ...value } as unknown as T;
+}
+
+const firestoreCollections = { settings: "siteSettings", programs: "programs", services: "services", events: "events", journal: "journalEntries", media: "mediaAssets", inquiries: "inquiries" };
+
+async function firestoreHasContent() {
+  const snapshot = await firestoreCollection(firestoreCollections.settings).limit(1).get();
+  return !snapshot.empty;
+}
+
+export async function ensureFirestoreContentSeeded() {
+  if (!firestoreEnabled() || await firestoreHasContent()) return;
+  const db = getFirebaseFirestore();
+  const batch = db.batch();
+  batch.set(firestoreCollection(firestoreCollections.settings).doc("1"), defaultSettings);
+  const seed = [
+    { title: "Wedding Moments", subtitle: "Ceremony + reception", description: "Romantic blue-and-ivory styling, floral moments, and a beautiful setting for your yes.", tag: "Weddings", imageUrl: "/images/blue-decore/weddings.jpg", featureTitle: "A day worth remembering", featureSubtitle: "Blue, soft, and entirely yours", sortOrder: 1, isPublished: true },
+    { title: "Birthday Joy", subtitle: "Milestones + surprises", description: "Playful, polished décor that makes every age and every guest feel celebrated.", tag: "Birthdays", imageUrl: "/images/blue-decore/birthdays.jpg", featureTitle: "Make a little more magic", featureSubtitle: "Bright details for the big day", sortOrder: 2, isPublished: true },
+    { title: "Graduate Glow", subtitle: "Photo moments + parties", description: "A proud, photo-ready celebration for the next chapter, styled in confident blue.", tag: "Graduations", imageUrl: "/images/blue-decore/graduations.jpg", featureTitle: "Celebrate the next chapter", featureSubtitle: "A setting made for proud photos", sortOrder: 3, isPublished: true },
+    { title: "Baby Showers", subtitle: "Sweet beginnings", description: "Gentle, joyful styling for welcoming a new little love and gathering your people.", tag: "Baby showers", imageUrl: "/images/blue-decore/baby-showers.jpg", featureTitle: "The sweetest beginning", featureSubtitle: "Soft details, warm memories", sortOrder: 4, isPublished: true },
+  ];
+  seed.forEach((item, index) => batch.set(firestoreCollection(firestoreCollections.programs).doc(String(index + 1)), { id: index + 1, ...item }));
+  ["Wedding Décor", "Birthday Décor", "Graduation Décor", "Baby Shower Décor"].forEach((title, index) => batch.set(firestoreCollection(firestoreCollections.services).doc(String(index + 1)), { id: index + 1, title, description: "Beautiful, thoughtful styling made for your moment.", iconKey: "sparkles", sortOrder: index + 1, isPublished: true }));
+  batch.set(firestoreCollection(firestoreCollections.events).doc("1"), { id: 1, title: defaultSettings.eventTitle, description: defaultSettings.eventBody, imageUrl: defaultSettings.eventImageUrl, ctaLabel: defaultSettings.eventCtaLabel, ctaTarget: "#contact", sortOrder: 1, isPublished: true });
+  [{ title: "A celebration starts with a feeling", category: "Studio note", dateLabel: "Blue Decor / 01" }, { title: "The little details guests remember", category: "Ideas", dateLabel: "Blue Decor / 02" }, { title: "Making room for your people", category: "Planning", dateLabel: "Blue Decor / 03" }].forEach((item, index) => batch.set(firestoreCollection(firestoreCollections.journal).doc(String(index + 1)), { id: index + 1, ...item, body: null, sortOrder: index + 1, isPublished: true }));
+  await batch.commit();
+}
+
+export async function firestoreList(collection: string) {
+  await ensureFirestoreContentSeeded();
+  const snapshot = await firestoreCollection(collection).get();
+  return snapshot.docs.map((doc) => firestoreRow(doc)).sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0));
+}
+
+export async function firestoreGetSettings() {
+  await ensureFirestoreContentSeeded();
+  const doc = await firestoreCollection(firestoreCollections.settings).doc("1").get();
+  return firestoreRow(doc, 1);
+}
+
+export async function firestoreSaveSettings(values: Record<string, unknown>) {
+  await firestoreCollection(firestoreCollections.settings).doc("1").set({ id: 1, ...values, updatedAt: new Date() }, { merge: true });
+}
+
+export async function firestoreCreate(collection: string, values: Record<string, unknown>) {
+  const ref = firestoreCollection(collection).doc();
+  const id = Math.abs(ref.id.split("").reduce((sum, char) => sum * 31 + char.charCodeAt(0), 7));
+  await ref.set({ id, ...values, createdAt: new Date(), updatedAt: new Date() });
+  return { id };
+}
+
+export async function firestoreUpdate(collection: string, id: number, values: Record<string, unknown>) {
+  const snapshot = await firestoreCollection(collection).where("id", "==", id).limit(1).get();
+  if (snapshot.empty) throw new Error("Content item was not found");
+  await snapshot.docs[0]!.ref.set({ ...values, updatedAt: new Date() }, { merge: true });
+}
+
+export async function firestoreDelete(collection: string, id: number) {
+  const snapshot = await firestoreCollection(collection).where("id", "==", id).limit(1).get();
+  if (!snapshot.empty) await snapshot.docs[0]!.ref.delete();
+}
+
+export async function firestorePublicContent() {
+  const settings = await firestoreGetSettings();
+  const published = async (collection: string) => (await firestoreList(collection)).filter((row) => row.isPublished !== false);
+  return { settings, programs: await published(firestoreCollections.programs), services: await published(firestoreCollections.services), events: await published(firestoreCollections.events), journalEntries: await published(firestoreCollections.journal) };
+}
+
+export async function firestoreDashboardSummary() {
+  const stats = async (collection: string) => { const rows = await firestoreList(collection); return { total: rows.length, published: rows.filter((row) => row.isPublished !== false).length, drafts: rows.filter((row) => row.isPublished === false).length }; };
+  const inquiryRows = await firestoreList(firestoreCollections.inquiries);
+  return { programs: await stats(firestoreCollections.programs), services: await stats(firestoreCollections.services), events: await stats(firestoreCollections.events), journal: await stats(firestoreCollections.journal), recentInquiries: inquiryRows.slice(0, 5), newInquiries: inquiryRows.filter((row) => row.status === "new").length };
+}

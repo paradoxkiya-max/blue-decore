@@ -1,10 +1,12 @@
-// Broadcast Atelier direction: Firebase Admin remains a server-side control-room utility, never part of the public surface or browser bundle.
+// Firebase Admin remains server-only: credentials are read from environment variables and never shipped to the browser.
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth, type DecodedIdToken, type UserRecord } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 
 const DEFAULT_FIREBASE_ADMIN_EMAIL = "tadi@gmail.com";
 
-type FirebaseServiceAccount = {
+export type FirebaseServiceAccount = {
   project_id: string;
   client_email: string;
   private_key: string;
@@ -16,18 +18,31 @@ function readServiceAccount(): FirebaseServiceAccount {
   return JSON.parse(raw) as FirebaseServiceAccount;
 }
 
-export function getFirebaseAdminAuth() {
+export function getFirebaseAdminApp() {
   if (!getApps().length) {
     const account = readServiceAccount();
     initializeApp({
       credential: cert({
         projectId: account.project_id,
         clientEmail: account.client_email,
-        privateKey: account.private_key,
+        privateKey: account.private_key.replace(/\\n/g, "\n"),
       }),
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || `${account.project_id}.firebasestorage.app`,
     });
   }
-  return getAuth();
+  return getApps()[0]!;
+}
+
+export function getFirebaseAdminAuth() {
+  return getAuth(getFirebaseAdminApp());
+}
+
+export function getFirebaseFirestore() {
+  return getFirestore(getFirebaseAdminApp());
+}
+
+export function getFirebaseStorageBucket() {
+  return getStorage(getFirebaseAdminApp()).bucket();
 }
 
 export async function verifyFirebaseIdToken(idToken: string): Promise<DecodedIdToken> {

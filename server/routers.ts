@@ -7,7 +7,7 @@ import { events, inquiries, journalEntries, mediaAssets, programs, services, sit
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
-import { dashboardSummary, ensureContentSeeded, publicContent, requireDb } from "./db";
+import { dashboardSummary, ensureContentSeeded, firestoreCreate, firestoreDashboardSummary, firestoreDelete, firestoreEnabled, firestoreGetSettings, firestoreList, firestorePublicContent, firestoreSaveSettings, firestoreUpdate, publicContent, requireDb } from "./db";
 import { normalizeImageSource, requireGoogleDriveImage } from "./googleDriveImages";
 
 const idInput = z.object({ id: z.number().int().positive() });
@@ -26,18 +26,18 @@ const settingsInput = z.object({
 });
 
 const programInput = z.object({ title: z.string().min(1).max(180), subtitle: z.string().min(1).max(180), description: z.string().min(1), tag: z.string().min(1).max(120), imageUrl: z.string().nullable().optional(), featureTitle: z.string().nullable().optional(), featureSubtitle: z.string().nullable().optional(), sortOrder: z.number().int().min(0).default(0), isPublished: z.boolean().default(true) });
-const serviceInput = z.object({ title: z.string().min(1).max(180), description: z.string().min(1), iconKey: z.enum(["mic", "camera", "calendar", "radio", "sparkles", "film"]).default("mic"), sortOrder: z.number().int().min(0).default(0), isPublished: z.boolean().default(true) });
+const serviceInput = z.object({ title: z.string().min(1).max(180), description: z.string().min(1), iconKey: z.enum(["mic", "camera", "calendar", "radio", "sparkles", "film"]).default("mic"), imageUrl: z.string().url().or(z.literal("")).nullable().optional(), sortOrder: z.number().int().min(0).default(0), isPublished: z.boolean().default(true) });
 const eventInput = z.object({ title: z.string().min(1).max(220), description: z.string().min(1), imageUrl: z.string().min(1), ctaLabel: z.string().min(1).max(120), ctaTarget: z.string().min(1).max(240), sortOrder: z.number().int().min(0).default(0), isPublished: z.boolean().default(true) });
 const journalInput = z.object({ title: z.string().min(1).max(260), category: z.string().min(1).max(100), dateLabel: z.string().min(1).max(120), body: z.string().nullable().optional(), sortOrder: z.number().int().min(0).default(0), isPublished: z.boolean().default(true) });
 
-function createCrudRouter(table: any, input: any) {
+function createCrudRouter(table: any, input: any, collection: string) {
   return router({
-    list: adminProcedure.query(async () => { await ensureContentSeeded(); const db = await requireDb(); return db.select().from(table).orderBy(asc(table.sortOrder)); }),
-    create: adminProcedure.input(input).mutation(async ({ input: rawValues }) => { const values = rawValues as Record<string, unknown>; const imageUrl = typeof values.imageUrl === "string" && values.imageUrl ? await normalizeImageSource(values.imageUrl) : values.imageUrl; const db = await requireDb(); const [result] = await db.insert(table).values({ ...values, imageUrl } as any).$returningId(); return { id: result.id }; }),
-    update: adminProcedure.input(idInput.merge(input.partial())).mutation(async ({ input: rawValues }) => { const values = rawValues as Record<string, unknown>; const { id, ...updates } = values; const imageUrl = typeof updates.imageUrl === "string" && updates.imageUrl ? await normalizeImageSource(updates.imageUrl) : updates.imageUrl; const db = await requireDb(); await db.update(table).set({ ...updates, imageUrl } as any).where(eq(table.id, id as number)); return { success: true }; }),
-    setPublished: adminProcedure.input(publishedInput).mutation(async ({ input }) => { const db = await requireDb(); await db.update(table).set({ isPublished: input.isPublished }).where(eq(table.id, input.id)); return { success: true }; }),
-    setOrder: adminProcedure.input(orderInput).mutation(async ({ input }) => { const db = await requireDb(); await db.update(table).set({ sortOrder: input.sortOrder }).where(eq(table.id, input.id)); return { success: true }; }),
-    remove: adminProcedure.input(idInput).mutation(async ({ input }) => { const db = await requireDb(); await db.delete(table).where(eq(table.id, input.id)); return { success: true }; }),
+    list: adminProcedure.query(async () => firestoreEnabled() ? firestoreList(collection) : (async () => { await ensureContentSeeded(); const db = await requireDb(); return db.select().from(table).orderBy(asc(table.sortOrder)); })()),
+    create: adminProcedure.input(input).mutation(async ({ input: rawValues }) => { const values = rawValues as Record<string, unknown>; const imageUrl = typeof values.imageUrl === "string" && values.imageUrl ? await normalizeImageSource(values.imageUrl) : values.imageUrl; if (firestoreEnabled()) return firestoreCreate(collection, { ...values, imageUrl }); const db = await requireDb(); const [result] = await db.insert(table).values({ ...values, imageUrl } as any).$returningId(); return { id: result.id }; }),
+    update: adminProcedure.input(idInput.merge(input.partial())).mutation(async ({ input: rawValues }) => { const values = rawValues as Record<string, unknown>; const { id, ...updates } = values; const imageUrl = typeof updates.imageUrl === "string" && updates.imageUrl ? await normalizeImageSource(updates.imageUrl) : updates.imageUrl; if (firestoreEnabled()) { await firestoreUpdate(collection, id as number, { ...updates, imageUrl }); return { success: true }; } const db = await requireDb(); await db.update(table).set({ ...updates, imageUrl } as any).where(eq(table.id, id as number)); return { success: true }; }),
+    setPublished: adminProcedure.input(publishedInput).mutation(async ({ input }) => { if (firestoreEnabled()) { await firestoreUpdate(collection, input.id, { isPublished: input.isPublished }); return { success: true }; } const db = await requireDb(); await db.update(table).set({ isPublished: input.isPublished }).where(eq(table.id, input.id)); return { success: true }; }),
+    setOrder: adminProcedure.input(orderInput).mutation(async ({ input }) => { if (firestoreEnabled()) { await firestoreUpdate(collection, input.id, { sortOrder: input.sortOrder }); return { success: true }; } const db = await requireDb(); await db.update(table).set({ sortOrder: input.sortOrder }).where(eq(table.id, input.id)); return { success: true }; }),
+    remove: adminProcedure.input(idInput).mutation(async ({ input }) => { if (firestoreEnabled()) { await firestoreDelete(collection, input.id); return { success: true }; } const db = await requireDb(); await db.delete(table).where(eq(table.id, input.id)); return { success: true }; }),
   });
 }
 
@@ -48,33 +48,34 @@ export const appRouter = router({
     logout: publicProcedure.mutation(({ ctx }) => { const response = ctx.res as unknown as { clearCookie?: (name: string, options: Record<string, unknown>) => void; setHeader?: (name: string, value: string) => void }; const options = { ...getSessionCookieOptions(ctx.req), maxAge: -1 }; if (response.clearCookie) response.clearCookie(COOKIE_NAME, options); else response.setHeader?.("Set-Cookie", `${COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; SameSite=None; Secure`); return { success: true } as const; }),
   }),
   public: router({
-    homepage: publicProcedure.query(() => publicContent()),
-    submitInquiry: publicProcedure.input(z.object({ name: z.string().min(2).max(180), email: z.string().email(), brief: z.string().min(8).max(4000) })).mutation(async ({ input }) => { const db = await requireDb(); const [result] = await db.insert(inquiries).values(input).$returningId(); return { id: result.id, success: true }; }),
+    homepage: publicProcedure.query(() => firestoreEnabled() ? firestorePublicContent() : publicContent()),
+    submitInquiry: publicProcedure.input(z.object({ name: z.string().min(2).max(180), email: z.string().email(), brief: z.string().min(8).max(4000) })).mutation(async ({ input }) => { if (firestoreEnabled()) return { ...(await firestoreCreate("inquiries", { ...input, status: "new" })), success: true }; const db = await requireDb(); const [result] = await db.insert(inquiries).values(input).$returningId(); return { id: result.id, success: true }; }),
   }),
   admin: router({
-    dashboard: adminProcedure.query(() => dashboardSummary()),
+    dashboard: adminProcedure.query(() => firestoreEnabled() ? firestoreDashboardSummary() : dashboardSummary()),
     settings: router({
-      get: adminProcedure.query(async () => { await ensureContentSeeded(); const db = await requireDb(); const [settings] = await db.select().from(siteSettings).limit(1); return settings; }),
-      update: adminProcedure.input(settingsInput).mutation(async ({ input }) => { const db = await requireDb(); await db.update(siteSettings).set({ ...input, heroImageUrl: await normalizeImageSource(input.heroImageUrl), aboutImageUrl: await normalizeImageSource(input.aboutImageUrl), eventImageUrl: await normalizeImageSource(input.eventImageUrl) }).where(eq(siteSettings.id, 1)); return { success: true }; }),
+      get: adminProcedure.query(async () => firestoreEnabled() ? firestoreGetSettings() : (async () => { await ensureContentSeeded(); const db = await requireDb(); const [settings] = await db.select().from(siteSettings).limit(1); return settings; })()),
+      update: adminProcedure.input(settingsInput).mutation(async ({ input }) => { const values = { ...input, heroImageUrl: await normalizeImageSource(input.heroImageUrl), aboutImageUrl: await normalizeImageSource(input.aboutImageUrl), eventImageUrl: await normalizeImageSource(input.eventImageUrl) }; if (firestoreEnabled()) { await firestoreSaveSettings(values); return { success: true }; } const db = await requireDb(); await db.update(siteSettings).set(values).where(eq(siteSettings.id, 1)); return { success: true }; }),
     }),
-    programs: createCrudRouter(programs, programInput),
-    services: createCrudRouter(services, serviceInput),
-    events: createCrudRouter(events, eventInput),
-    journal: createCrudRouter(journalEntries, journalInput),
+    programs: createCrudRouter(programs, programInput, "programs"),
+    services: createCrudRouter(services, serviceInput, "services"),
+    events: createCrudRouter(events, eventInput, "events"),
+    journal: createCrudRouter(journalEntries, journalInput, "journalEntries"),
     inquiries: router({
-      list: adminProcedure.query(async () => { const db = await requireDb(); return db.select().from(inquiries).orderBy(desc(inquiries.createdAt)); }),
-      updateStatus: adminProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["new", "read", "replied", "archived"]) })).mutation(async ({ input }) => { const db = await requireDb(); await db.update(inquiries).set({ status: input.status }).where(eq(inquiries.id, input.id)); return { success: true }; }),
-      remove: adminProcedure.input(idInput).mutation(async ({ input }) => { const db = await requireDb(); await db.delete(inquiries).where(eq(inquiries.id, input.id)); return { success: true }; }),
+      list: adminProcedure.query(async () => firestoreEnabled() ? firestoreList("inquiries") : (async () => { const db = await requireDb(); return db.select().from(inquiries).orderBy(desc(inquiries.createdAt)); })()),
+      updateStatus: adminProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["new", "read", "replied", "archived"]) })).mutation(async ({ input }) => { if (firestoreEnabled()) { await firestoreUpdate("inquiries", input.id, { status: input.status }); return { success: true }; } const db = await requireDb(); await db.update(inquiries).set({ status: input.status }).where(eq(inquiries.id, input.id)); return { success: true }; }),
+      remove: adminProcedure.input(idInput).mutation(async ({ input }) => { if (firestoreEnabled()) { await firestoreDelete("inquiries", input.id); return { success: true }; } const db = await requireDb(); await db.delete(inquiries).where(eq(inquiries.id, input.id)); return { success: true }; }),
     }),
     media: router({
-      list: adminProcedure.query(async () => { const db = await requireDb(); return db.select().from(mediaAssets).orderBy(desc(mediaAssets.createdAt)); }),
+      list: adminProcedure.query(async () => firestoreEnabled() ? firestoreList("mediaAssets") : (async () => { const db = await requireDb(); return db.select().from(mediaAssets).orderBy(desc(mediaAssets.createdAt)); })()),
       connectDrive: adminProcedure.input(z.object({ fileName: z.string().min(1).max(255), altText: z.string().min(1).max(320), category: z.string().min(1).max(100), driveLink: z.string().url() })).mutation(async ({ input }) => {
         const driveImage = await requireGoogleDriveImage(input.driveLink);
+        if (firestoreEnabled()) return { ...(await firestoreCreate("mediaAssets", { fileName: input.fileName, storageKey: `google-drive:${driveImage.fileId}`, url: driveImage.url, altText: input.altText, category: input.category })), ...driveImage };
         const db = await requireDb();
         const [result] = await db.insert(mediaAssets).values({ fileName: input.fileName, storageKey: `google-drive:${driveImage.fileId}`, url: driveImage.url, altText: input.altText, category: input.category }).$returningId();
         return { id: result.id, ...driveImage };
       }),
-      remove: adminProcedure.input(idInput).mutation(async ({ input }) => { const db = await requireDb(); await db.delete(mediaAssets).where(eq(mediaAssets.id, input.id)); return { success: true }; }),
+      remove: adminProcedure.input(idInput).mutation(async ({ input }) => { if (firestoreEnabled()) { await firestoreDelete("mediaAssets", input.id); return { success: true }; } const db = await requireDb(); await db.delete(mediaAssets).where(eq(mediaAssets.id, input.id)); return { success: true }; }),
     }),
   }),
 });
