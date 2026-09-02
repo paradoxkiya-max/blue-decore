@@ -6,6 +6,7 @@ import { getStorage } from "firebase-admin/storage";
 
 const DEFAULT_FIREBASE_ADMIN_EMAIL = "tadi@gmail.com";
 
+
 export type FirebaseServiceAccount = {
   project_id: string;
   client_email: string;
