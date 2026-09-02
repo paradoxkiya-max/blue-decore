@@ -6,13 +6,9 @@
   "functions": {
     "api/rest/[...path].ts": {
       "maxDuration": 30
-    },
-    "api/firebase/session.ts": {
-      "maxDuration": 30
     }
   },
   "rewrites": [
-    { "source": "/api/firebase/session", "destination": "/api/firebase/session" },
     { "source": "/((?!api(?:/|$)).*)", "destination": "/index.html" }
   ]
 }
