@@ -164,9 +164,9 @@ export async function publicContent() {
       services: [],
       events: [],
       journalEntries: [
-        { id: 1, title: "A celebration starts with a feeling", category: "Studio note", dateLabel: "Blue Decore / 01", body: null, sortOrder: 1, isPublished: true, createdAt: new Date(), updatedAt: new Date() },
-        { id: 2, title: "The little details guests remember", category: "Ideas", dateLabel: "Blue Decore / 02", body: null, sortOrder: 2, isPublished: true, createdAt: new Date(), updatedAt: new Date() },
-        { id: 3, title: "Making room for your people", category: "Planning", dateLabel: "Blue Decore / 03", body: null, sortOrder: 3, isPublished: true, createdAt: new Date(), updatedAt: new Date() },
+        { id: 1, title: "A celebration starts with a feeling", category: "Studio note", dateLabel: "Blue Decor / 01", body: null, sortOrder: 1, isPublished: true, createdAt: new Date(), updatedAt: new Date() },
+        { id: 2, title: "The little details guests remember", category: "Ideas", dateLabel: "Blue Decor / 02", body: null, sortOrder: 2, isPublished: true, createdAt: new Date(), updatedAt: new Date() },
+        { id: 3, title: "Making room for your people", category: "Planning", dateLabel: "Blue Decor / 03", body: null, sortOrder: 3, isPublished: true, createdAt: new Date(), updatedAt: new Date() },
       ],
     };
   }

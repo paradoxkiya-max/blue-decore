@@ -1,4 +1,4 @@
-// Blue Decore Firebase client setup for authentication and analytics.
+// Blue Decor Firebase client setup for authentication and analytics.
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getAnalytics, isSupported } from "firebase/analytics";
