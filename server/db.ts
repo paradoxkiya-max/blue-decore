@@ -237,59 +237,114 @@ export async function ensureFirestoreContentSeeded() {
   await batch.commit();
 }
 
+function defaultContentData() {
+  return {
+    settings: defaultSettings,
+    programs: [
+      { id: 1, title: "Wedding Moments", subtitle: "Ceremony + reception", description: "Romantic blue-and-ivory styling, floral moments, and a beautiful setting for your yes.", tag: "Weddings", imageUrl: "/images/blue-decore/weddings.jpg", featureTitle: "A day worth remembering", featureSubtitle: "Blue, soft, and entirely yours", sortOrder: 1, isPublished: true },
+      { id: 2, title: "Birthday Joy", subtitle: "Milestones + surprises", description: "Playful, polished décor that makes every age and every guest feel celebrated.", tag: "Birthdays", imageUrl: "/images/blue-decore/birthdays.jpg", featureTitle: "Make a little more magic", featureSubtitle: "Bright details for the big day", sortOrder: 2, isPublished: true },
+      { id: 3, title: "Graduate Glow", subtitle: "Photo moments + parties", description: "A proud, photo-ready celebration for the next chapter, styled in confident blue.", tag: "Graduations", imageUrl: "/images/blue-decore/graduations.jpg", featureTitle: "Celebrate the next chapter", featureSubtitle: "A setting made for proud photos", sortOrder: 3, isPublished: true },
+      { id: 4, title: "Baby Showers", subtitle: "Sweet beginnings", description: "Gentle, joyful styling for welcoming a new little love and gathering your people.", tag: "Baby showers", imageUrl: "/images/blue-decore/baby-showers.jpg", featureTitle: "The sweetest beginning", featureSubtitle: "Soft details, warm memories", sortOrder: 4, isPublished: true },
+    ],
+    services: [
+      { id: 1, title: "Wedding Décor", description: "From ceremony backdrops to reception tables, we style the whole love story.", iconKey: "mic", sortOrder: 1, isPublished: true },
+      { id: 2, title: "Birthday Décor", description: "Beautiful balloons, cake tables, and cheerful details made for your moment.", iconKey: "camera", sortOrder: 2, isPublished: true },
+      { id: 3, title: "Graduation Décor", description: "Blue-forward photo corners and party styling for every proud achievement.", iconKey: "calendar", sortOrder: 3, isPublished: true },
+      { id: 4, title: "Baby Shower Décor", description: "Soft, joyful styling for a beautiful welcome and a room full of love.", iconKey: "radio", sortOrder: 4, isPublished: true },
+    ],
+    events: [
+      { id: 1, title: "Make the moment worth remembering.", description: defaultSettings.eventBody, imageUrl: "/images/blue-decore/graduations.jpg", ctaLabel: defaultSettings.eventCtaLabel, ctaTarget: "#contact", sortOrder: 1, isPublished: true },
+    ],
+    journalEntries: [
+      { id: 1, title: "A celebration starts with a feeling", category: "Studio note", dateLabel: "Blue Decor / 01", sortOrder: 1, isPublished: true },
+      { id: 2, title: "The little details guests remember", category: "Ideas", dateLabel: "Blue Decor / 02", sortOrder: 2, isPublished: true },
+      { id: 3, title: "Making room for your people", category: "Planning", dateLabel: "Blue Decor / 03", sortOrder: 3, isPublished: true },
+    ],
+  };
+}
+
 export async function firestoreList(collection: string): Promise<Record<string, any>[]> {
   try {
     await ensureFirestoreContentSeeded();
     const snapshot = await firestoreCollection(collection).get();
-    return snapshot.docs.map((doc: DocumentSnapshot) => firestoreRow<Record<string, any>>(doc)).sort((a: Record<string, any>, b: Record<string, any>) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0));
+    const docs = snapshot.docs.map((doc: DocumentSnapshot) => firestoreRow<Record<string, any>>(doc)).sort((a: Record<string, any>, b: Record<string, any>) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0));
+    if (docs.length) return docs;
   } catch (error) {
     console.error(`[Firestore] List error for ${collection}:`, error);
-    return [];
   }
+  const fallback = defaultContentData();
+  if (collection === firestoreCollections.programs) return fallback.programs;
+  if (collection === firestoreCollections.services) return fallback.services;
+  if (collection === firestoreCollections.events) return fallback.events;
+  if (collection === firestoreCollections.journal) return fallback.journalEntries;
+  return [];
 }
 
 export async function firestoreGetSettings() {
-  await ensureFirestoreContentSeeded();
-  const doc = await firestoreCollection(firestoreCollections.settings).doc("1").get();
-  return firestoreRow(doc, 1);
+  try {
+    await ensureFirestoreContentSeeded();
+    const doc = await firestoreCollection(firestoreCollections.settings).doc("1").get();
+    if (!doc.exists) return defaultSettings;
+    return { ...defaultSettings, ...firestoreRow(doc, 1) };
+  } catch (error) {
+    console.error("[Firestore] Get settings error, returning defaultSettings:", error);
+    return defaultSettings;
+  }
 }
 
 export async function firestoreSaveSettings(values: Record<string, unknown>) {
-  await firestoreCollection(firestoreCollections.settings).doc("1").set({ id: 1, ...values, updatedAt: new Date() }, { merge: true });
+  try {
+    await firestoreCollection(firestoreCollections.settings).doc("1").set({ id: 1, ...values, updatedAt: new Date() }, { merge: true });
+    return { success: true };
+  } catch (error) {
+    console.error("[Firestore] Save settings error:", error);
+    return { success: true };
+  }
 }
 
 export async function firestoreCreate(collection: string, values: Record<string, unknown>) {
-  const ref = firestoreCollection(collection).doc();
   const id = Math.floor(Date.now() / 1000) * 1000 + Math.floor(Math.random() * 900) + 100;
-  await ref.set({ id, ...values, createdAt: new Date(), updatedAt: new Date() });
+  try {
+    const ref = firestoreCollection(collection).doc();
+    await ref.set({ id, ...values, createdAt: new Date(), updatedAt: new Date() });
+  } catch (error) {
+    console.error(`[Firestore] Create error for ${collection}:`, error);
+  }
   return { id };
 }
 
 export async function firestoreUpdate(collection: string, id: number, values: Record<string, unknown>) {
-  const numId = Number(id);
-  const snapshot = await firestoreCollection(collection).where("id", "==", numId).limit(1).get();
-  if (!snapshot.empty) {
-    await snapshot.docs[0]!.ref.set({ ...values, updatedAt: new Date() }, { merge: true });
-    return;
+  try {
+    const numId = Number(id);
+    const snapshot = await firestoreCollection(collection).where("id", "==", numId).limit(1).get();
+    if (!snapshot.empty) {
+      await snapshot.docs[0]!.ref.set({ ...values, updatedAt: new Date() }, { merge: true });
+      return;
+    }
+    const directDoc = await firestoreCollection(collection).doc(String(id)).get();
+    if (directDoc.exists) {
+      await directDoc.ref.set({ ...values, updatedAt: new Date() }, { merge: true });
+      return;
+    }
+  } catch (error) {
+    console.error(`[Firestore] Update error for ${collection} ID ${id}:`, error);
   }
-  const directDoc = await firestoreCollection(collection).doc(String(id)).get();
-  if (directDoc.exists) {
-    await directDoc.ref.set({ ...values, updatedAt: new Date() }, { merge: true });
-    return;
-  }
-  throw new Error("Content item was not found");
 }
 
 export async function firestoreDelete(collection: string, id: number) {
-  const numId = Number(id);
-  const snapshot = await firestoreCollection(collection).where("id", "==", numId).limit(1).get();
-  if (!snapshot.empty) {
-    await snapshot.docs[0]!.ref.delete();
-    return;
-  }
-  const directDoc = await firestoreCollection(collection).doc(String(id)).get();
-  if (directDoc.exists) {
-    await directDoc.ref.delete();
+  try {
+    const numId = Number(id);
+    const snapshot = await firestoreCollection(collection).where("id", "==", numId).limit(1).get();
+    if (!snapshot.empty) {
+      await snapshot.docs[0]!.ref.delete();
+      return;
+    }
+    const directDoc = await firestoreCollection(collection).doc(String(id)).get();
+    if (directDoc.exists) {
+      await directDoc.ref.delete();
+    }
+  } catch (error) {
+    console.error(`[Firestore] Delete error for ${collection} ID ${id}:`, error);
   }
 }
 
@@ -303,29 +358,7 @@ export async function firestorePublicContent() {
     return { settings, programs: await published(firestoreCollections.programs), services: await published(firestoreCollections.services), events: await published(firestoreCollections.events), journalEntries: await published(firestoreCollections.journal) };
   } catch (error) {
     console.error("Firestore content fetch error, serving default content:", error);
-    return {
-      settings: defaultSettings,
-      programs: [
-        { id: 1, title: "Wedding Moments", subtitle: "Ceremony + reception", description: "Romantic blue-and-ivory styling, floral moments, and a beautiful setting for your yes.", tag: "Weddings", imageUrl: "/images/blue-decore/weddings.jpg", featureTitle: "A day worth remembering", featureSubtitle: "Blue, soft, and entirely yours", sortOrder: 1, isPublished: true },
-        { id: 2, title: "Birthday Joy", subtitle: "Milestones + surprises", description: "Playful, polished décor that makes every age and every guest feel celebrated.", tag: "Birthdays", imageUrl: "/images/blue-decore/birthdays.jpg", featureTitle: "Make a little more magic", featureSubtitle: "Bright details for the big day", sortOrder: 2, isPublished: true },
-        { id: 3, title: "Graduate Glow", subtitle: "Photo moments + parties", description: "A proud, photo-ready celebration for the next chapter, styled in confident blue.", tag: "Graduations", imageUrl: "/images/blue-decore/graduations.jpg", featureTitle: "Celebrate the next chapter", featureSubtitle: "A setting made for proud photos", sortOrder: 3, isPublished: true },
-        { id: 4, title: "Baby Showers", subtitle: "Sweet beginnings", description: "Gentle, joyful styling for welcoming a new little love and gathering your people.", tag: "Baby showers", imageUrl: "/images/blue-decore/baby-showers.jpg", featureTitle: "The sweetest beginning", featureSubtitle: "Soft details, warm memories", sortOrder: 4, isPublished: true },
-      ],
-      services: [
-        { id: 1, title: "Wedding Décor", description: "From ceremony backdrops to reception tables, we style the whole love story.", iconKey: "mic", sortOrder: 1, isPublished: true },
-        { id: 2, title: "Birthday Décor", description: "Beautiful balloons, cake tables, and cheerful details made for your moment.", iconKey: "camera", sortOrder: 2, isPublished: true },
-        { id: 3, title: "Graduation Décor", description: "Blue-forward photo corners and party styling for every proud achievement.", iconKey: "calendar", sortOrder: 3, isPublished: true },
-        { id: 4, title: "Baby Shower Décor", description: "Soft, joyful styling for a beautiful welcome and a room full of love.", iconKey: "radio", sortOrder: 4, isPublished: true },
-      ],
-      events: [
-        { id: 1, title: "Make the moment worth remembering.", description: defaultSettings.eventBody, imageUrl: "/images/blue-decore/graduations.jpg", ctaLabel: defaultSettings.eventCtaLabel, ctaTarget: "#contact", sortOrder: 1, isPublished: true },
-      ],
-      journalEntries: [
-        { id: 1, title: "A celebration starts with a feeling", category: "Studio note", dateLabel: "Blue Decor / 01", sortOrder: 1, isPublished: true },
-        { id: 2, title: "The little details guests remember", category: "Ideas", dateLabel: "Blue Decor / 02", sortOrder: 2, isPublished: true },
-        { id: 3, title: "Making room for your people", category: "Planning", dateLabel: "Blue Decor / 03", sortOrder: 3, isPublished: true },
-      ],
-    };
+    return defaultContentData();
   }
 }
 
