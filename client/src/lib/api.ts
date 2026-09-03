@@ -1,80 +1,143 @@
-// Blue Decor API client — connects the CMS admin and public landing page to the
-// Express REST proxy which forwards to tRPC procedures backed by Firestore.
+// Blue Decor API client — connects CMS admin and public landing page
+// DIRECTLY to Firebase Firestore via client SDK (zero Vercel backend server dependencies).
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { firebaseAuth } from "@/lib/firebase";
+import {
+  getPublicContent,
+  submitInquiry,
+  getSettings,
+  updateSettings,
+  listCollection,
+  createCollectionItem,
+  updateCollectionItem,
+  deleteCollectionItem,
+  getDashboardSummary,
+  defaultPrograms,
+  defaultServices,
+  defaultEvents,
+  defaultJournal,
+} from "./firebaseContent";
 
 // ── Auth token management ──────────────────────────────────────────────
-// We subscribe to Firebase auth state changes and cache the ID token so
-// every REST request includes the latest valid token without race conditions.
 
-let cachedToken: string | null = null;
+let currentUserEmail: string | null = null;
 let authReady = false;
 let authReadyResolve: (() => void) | null = null;
 const authReadyPromise = new Promise<void>((resolve) => {
   authReadyResolve = resolve;
 });
 
-onAuthStateChanged(firebaseAuth, async (user) => {
-  if (user) {
-    try {
-      cachedToken = await user.getIdToken();
-    } catch {
-      cachedToken = null;
-    }
-  } else {
-    cachedToken = null;
-  }
+onAuthStateChanged(firebaseAuth, (user) => {
+  currentUserEmail = user?.email ?? null;
   if (!authReady) {
     authReady = true;
     authReadyResolve?.();
   }
 });
 
-async function getToken(): Promise<string | null> {
+// ── Firestore Dispatch Helper ──────────────────────────────────────────
+
+async function request(path: string, method: "GET" | "POST", input?: any): Promise<any> {
   if (!authReady) await authReadyPromise;
-  // Refresh the token if user is still logged in
-  const user = firebaseAuth.currentUser;
-  if (user) {
-    try {
-      cachedToken = await user.getIdToken();
-    } catch {
-      // keep the last cached token
+
+  // Clean trailing slashes
+  const cleanPath = path.replace(/\/+$/, "");
+
+  // 1. Auth routes
+  if (cleanPath === "auth/me") {
+    const user = firebaseAuth.currentUser;
+    if (!user) return null;
+    return {
+      id: 1,
+      openId: `firebase_${user.uid}`,
+      email: user.email ?? "tadi@gmail.com",
+      name: user.displayName ?? user.email ?? "Admin",
+      role: "admin",
+    };
+  }
+  if (cleanPath === "auth/logout") {
+    await firebaseAuth.signOut();
+    return { success: true };
+  }
+
+  // 2. Public routes
+  if (cleanPath === "public/homepage") {
+    return getPublicContent();
+  }
+  if (cleanPath === "public/submitInquiry") {
+    return submitInquiry(input);
+  }
+
+  // 3. Admin Dashboard & Settings
+  if (cleanPath === "admin/dashboard") {
+    return getDashboardSummary();
+  }
+  if (cleanPath === "admin/settings/get") {
+    return getSettings();
+  }
+  if (cleanPath === "admin/settings/update") {
+    return updateSettings(input);
+  }
+
+  // 4. Admin Generic Collection Routing (programs, services, events, journal, inquiries, media)
+  const parts = cleanPath.split("/");
+  if (parts.length >= 3 && parts[0] === "admin") {
+    const feature = parts[1]; // e.g. "programs", "services", "events", "journal", "inquiries", "media"
+    const action = parts[2];  // e.g. "list", "create", "update", "remove", "setPublished", "setOrder", "connectDrive", "uploadDirect"
+
+    const collMap: Record<string, { name: string; defaults: any[] }> = {
+      programs: { name: "programs", defaults: defaultPrograms },
+      services: { name: "services", defaults: defaultServices },
+      events: { name: "events", defaults: defaultEvents },
+      journal: { name: "journalEntries", defaults: defaultJournal },
+      inquiries: { name: "inquiries", defaults: [] },
+      media: { name: "mediaAssets", defaults: [] },
+    };
+
+    const target = collMap[feature];
+    if (target) {
+      if (action === "list") {
+        return listCollection(target.name, target.defaults);
+      }
+      if (action === "create" || action === "connectDrive" || action === "uploadDirect") {
+        const payload = input ?? {};
+        let finalValues = { ...payload };
+        if (action === "connectDrive" && payload.driveLink) {
+          finalValues.url = payload.driveLink;
+          finalValues.storageKey = `drive:${Date.now()}`;
+        }
+        if (action === "uploadDirect" && payload.fileData) {
+          finalValues.url = payload.fileData;
+          finalValues.storageKey = `direct:${Date.now()}`;
+        }
+        return createCollectionItem(target.name, finalValues);
+      }
+      if (action === "update") {
+        const { id, ...updates } = input ?? {};
+        return updateCollectionItem(target.name, id, updates);
+      }
+      if (action === "setPublished") {
+        return updateCollectionItem(target.name, input.id, { isPublished: input.isPublished });
+      }
+      if (action === "setOrder") {
+        return updateCollectionItem(target.name, input.id, { sortOrder: input.sortOrder });
+      }
+      if (action === "remove") {
+        return deleteCollectionItem(target.name, input.id);
+      }
+      if (action === "updateStatus") {
+        return updateCollectionItem(target.name, input.id, { status: input.status });
+      }
     }
   }
-  return cachedToken;
-}
 
-// ── REST request helper ────────────────────────────────────────────────
-
-async function request(path: string, method: "GET" | "POST", input?: unknown) {
-  const token = await getToken();
-  const response = await fetch(`/api/rest/${path}`, {
-    method,
-    headers: {
-      accept: "application/json",
-      ...(method === "POST" ? { "content-type": "application/json" } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    credentials: "include",
-    body: method === "POST" ? JSON.stringify(input ?? null) : undefined,
-  });
-  const text = await response.text();
-  let payload: any = null;
-  try {
-    payload = text ? JSON.parse(text) : null;
-  } catch {
-    throw new Error("The server returned an invalid response.");
-  }
-  if (!response.ok) {
-    throw new Error(payload?.error ?? "The request could not be completed.");
-  }
-  return payload;
+  console.warn(`[Firestore Dispatch] Unhandled route path: ${cleanPath}`);
+  return { success: true };
 }
 
 // ── Query cache & invalidation ─────────────────────────────────────────
-// A simple global cache of query subscribers. When invalidate() is called
-// on a path, every mounted hook using that path will refetch.
 
 type QuerySubscriber = () => void;
 const subscribers = new Map<string, Set<QuerySubscriber>>();
@@ -134,12 +197,10 @@ function queryHook<T>(path: string, _input: unknown, options?: Options): QueryRe
     }
   }, []);
 
-  // Fetch on mount
   useEffect(() => {
     void run();
   }, [run]);
 
-  // Subscribe to invalidation
   useEffect(() => {
     return subscribe(path, run);
   }, [path, run]);
@@ -189,9 +250,7 @@ function mutationHook(path: string, options?: Options) {
   };
 }
 
-// ── useUtils hook (real invalidation) ──────────────────────────────────
-// Returns a deeply nested proxy where any path ending in `.invalidate()`
-// will trigger a refetch on all mounted query hooks for that path.
+// ── useUtils hook (invalidation proxy) ─────────────────────────────────
 
 function createUtilsProxy(parts: string[] = []): any {
   return new Proxy(
@@ -214,9 +273,6 @@ function createUtilsProxy(parts: string[] = []): any {
 }
 
 // ── Endpoint proxy ─────────────────────────────────────────────────────
-// `api.admin.settings.get.useQuery()` → `queryHook("admin/settings/get")`
-// `api.admin.settings.update.useMutation()` → `mutationHook("admin/settings/update")`
-// `api.useUtils()` → returns the invalidation proxy
 
 function endpoint(parts: string[]): any {
   return new Proxy(

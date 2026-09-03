@@ -28,7 +28,10 @@ if (typeof window !== "undefined" && firebaseConfig.measurementId) {
   }).catch(() => undefined);
 }
 
+import { getFirestore } from "firebase/firestore";
+
 export const firebaseAuth = getAuth(firebaseApp);
+export const firebaseDb = getFirestore(firebaseApp);
 if (typeof window !== "undefined") {
   void setPersistence(firebaseAuth, browserLocalPersistence).catch(() => undefined);
 }
