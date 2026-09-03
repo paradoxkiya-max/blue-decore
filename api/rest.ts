@@ -28,8 +28,8 @@ export default async function handler(req: Request, res: Response) {
     return json(res, 200, await procedure(input));
   } catch (error: any) {
     console.error("[REST API] Request failed", error);
-    const errCode = error?.code || error?.status;
-    const code = errCode === "UNAUTHORIZED" || errCode === 401 ? 401 : errCode === "FORBIDDEN" || errCode === 403 ? 403 : errCode === "BAD_REQUEST" || errCode === 400 ? 400 : 500;
+    const rawCode = error?.statusCode ?? error?.status ?? error?.code;
+    const code = rawCode === 401 || rawCode === "UNAUTHORIZED" ? 401 : rawCode === 403 || rawCode === "FORBIDDEN" ? 403 : rawCode === 400 || rawCode === "BAD_REQUEST" ? 400 : 500;
     return json(res, code, { error: error?.message ?? "The request could not be completed." });
   }
 }
